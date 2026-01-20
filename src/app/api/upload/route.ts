@@ -31,12 +31,36 @@ export async function POST(request: NextRequest) {
             try {
                 // eslint-disable-next-line @typescript-eslint/no-require-imports
                 const pdfParse = require('pdf-parse')
-                const pdfData = await pdfParse(buffer)
+
+                // Opções para tentar ler PDFs problemáticos
+                const options = {
+                    max: 0, // sem limite de páginas
+                }
+
+                const pdfData = await pdfParse(buffer, options)
                 extractedText = pdfData.text
-            } catch (pdfError) {
-                console.error('Erro ao ler PDF:', pdfError)
+
+                // Se não extraiu texto, pode ser um PDF de imagem
+                if (!extractedText || extractedText.trim().length < 10) {
+                    return NextResponse.json(
+                        { error: 'Este PDF parece ser uma imagem escaneada. Por favor, use um PDF com texto selecionável ou um arquivo Word.' },
+                        { status: 400 }
+                    )
+                }
+
+            } catch (pdfError: any) {
+                console.error('Erro ao ler PDF:', pdfError?.message || pdfError)
+
+                // Verificar tipos específicos de erro
+                if (pdfError?.message?.includes('password')) {
+                    return NextResponse.json(
+                        { error: 'Este PDF está protegido por senha. Remova a senha e tente novamente.' },
+                        { status: 400 }
+                    )
+                }
+
                 return NextResponse.json(
-                    { error: 'Erro ao ler o arquivo PDF. Verifique se não está protegido.' },
+                    { error: 'Não foi possível ler este PDF. Tente salvar como Word (.docx) ou copie o texto para um arquivo .txt' },
                     { status: 400 }
                 )
             }
