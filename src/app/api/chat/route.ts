@@ -44,10 +44,14 @@ export async function POST(request: NextRequest) {
         const apiKey = process.env.GEMINI_API_KEY
 
         if (!apiKey) {
+            console.error('GEMINI_API_KEY não encontrada nas variáveis de ambiente')
             return NextResponse.json({
-                response: 'A IA precisa ser configurada. Contate a Nutricionista Carla. 😊'
+                response: 'Chave da API não configurada. Contate o suporte. 😊'
             })
         }
+
+        // Log para debug
+        console.log('API Key encontrada:', apiKey.substring(0, 10) + '...')
 
         // Montar prompt
         let fullPrompt: string
@@ -57,8 +61,10 @@ export async function POST(request: NextRequest) {
             fullPrompt = SYSTEM_PROMPT_SEM_CARDAPIO + '\n\nPergunta: ' + message
         }
 
-        // Testar com modelo gemini-1.5-flash
+        // Usar modelo gemini-1.5-flash
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
+
+        console.log('Fazendo requisição para Gemini...')
 
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -73,25 +79,36 @@ export async function POST(request: NextRequest) {
         })
 
         const responseText = await response.text()
-        console.log('Gemini Response Status:', response.status)
-        console.log('Gemini Response:', responseText.substring(0, 500))
+
+        // Log detalhado
+        console.log('Status HTTP:', response.status)
+        console.log('Headers:', JSON.stringify(Object.fromEntries(response.headers.entries())))
+        console.log('Resposta (primeiros 1000 chars):', responseText.substring(0, 1000))
 
         if (!response.ok) {
+            console.error('Erro HTTP do Gemini:', response.status, responseText)
+
             // Tentar extrair mensagem de erro
             try {
                 const errorData = JSON.parse(responseText)
-                console.error('Gemini Error:', errorData.error?.message || responseText)
+                const errorMessage = errorData.error?.message || 'Erro desconhecido'
+                console.error('Mensagem de erro:', errorMessage)
+
+                // Retornar erro específico para debug
+                return NextResponse.json({
+                    response: `Erro da API: ${errorMessage.substring(0, 100)}`
+                })
             } catch {
-                console.error('Gemini Error Raw:', responseText)
+                return NextResponse.json({
+                    response: `Erro HTTP ${response.status}. Verifique os logs.`
+                })
             }
-            return NextResponse.json({
-                response: `Desculpe, não consegui processar. Tente novamente. 🙏`
-            })
         }
 
         const data = JSON.parse(responseText)
 
         if (data.promptFeedback?.blockReason) {
+            console.log('Bloqueado por:', data.promptFeedback.blockReason)
             return NextResponse.json({
                 response: 'Não posso responder a essa pergunta. Tente reformular. 🤔'
             })
@@ -100,18 +117,19 @@ export async function POST(request: NextRequest) {
         const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text
 
         if (!aiResponse) {
-            console.error('Resposta vazia:', JSON.stringify(data))
+            console.error('Resposta vazia. Data:', JSON.stringify(data))
             return NextResponse.json({
-                response: 'Não entendi. Pode reformular sua pergunta? 🤔'
+                response: 'Resposta vazia. Tente novamente. 🤔'
             })
         }
 
+        console.log('Sucesso! Resposta recebida.')
         return NextResponse.json({ response: aiResponse })
 
     } catch (error) {
-        console.error('Erro na API:', error)
+        console.error('Erro geral na API:', error)
         return NextResponse.json({
-            response: 'Erro técnico. Tente novamente. 🙏'
+            response: `Erro técnico: ${error instanceof Error ? error.message : 'desconhecido'}`
         })
     }
 }
