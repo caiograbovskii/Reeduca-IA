@@ -1,11 +1,12 @@
 'use client'
 
 // ============================================================
-// Dashboard - Reeduca-IA
+// Dashboard Mobile-First - Reeduca-IA
 // ============================================================
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, Menu, Chat } from '@/types'
 import ChatComponent from '@/components/Chat'
@@ -22,6 +23,7 @@ export default function DashboardPage() {
     const [currentChat, setCurrentChat] = useState<Chat | null>(null)
     const [showAdminPanel, setShowAdminPanel] = useState(false)
     const [showAddMenu, setShowAddMenu] = useState(false)
+    const [showSidebar, setShowSidebar] = useState(false)
 
     useEffect(() => {
         loadData()
@@ -36,18 +38,14 @@ export default function DashboardPage() {
             return
         }
 
-        // Carregar perfil
         const { data: profileData } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', user.id)
             .single()
 
-        if (profileData) {
-            setProfile(profileData)
-        }
+        if (profileData) setProfile(profileData)
 
-        // Carregar cardápios
         const { data: menusData } = await supabase
             .from('menus')
             .select('*')
@@ -56,21 +54,16 @@ export default function DashboardPage() {
 
         if (menusData) {
             setMenus(menusData)
-            if (menusData.length > 0) {
-                setSelectedMenu(menusData[0].id)
-            }
+            if (menusData.length > 0) setSelectedMenu(menusData[0].id)
         }
 
-        // Carregar chats
         const { data: chatsData } = await supabase
             .from('chats')
             .select('*')
             .eq('user_id', user.id)
             .order('updated_at', { ascending: false })
 
-        if (chatsData) {
-            setChats(chatsData)
-        }
+        if (chatsData) setChats(chatsData)
 
         setLoading(false)
     }
@@ -85,9 +78,7 @@ export default function DashboardPage() {
         if (!profile) return
 
         const supabase = createClient()
-
-        // Criar nova conversa (cardápio é opcional)
-        const { data: newChat, error } = await supabase
+        const { data: newChat } = await supabase
             .from('chats')
             .insert({
                 user_id: profile.id,
@@ -100,39 +91,24 @@ export default function DashboardPage() {
         if (newChat) {
             setChats(prev => [newChat, ...prev])
             setCurrentChat(newChat)
+            setShowSidebar(false)
         }
     }
 
     const handleSelectChat = (chat: Chat) => {
         setCurrentChat(chat)
+        setShowSidebar(false)
     }
 
-    const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
-        e.stopPropagation()
-
-        if (!confirm('Tem certeza que deseja excluir esta conversa?')) return
+    const handleDeleteChat = async (chatId: string) => {
+        if (!confirm('Excluir esta conversa?')) return
 
         const supabase = createClient()
+        await supabase.from('messages').delete().eq('chat_id', chatId)
+        await supabase.from('chats').delete().eq('id', chatId)
 
-        // Deletar mensagens primeiro
-        await supabase
-            .from('messages')
-            .delete()
-            .eq('chat_id', chatId)
-
-        // Deletar o chat
-        await supabase
-            .from('chats')
-            .delete()
-            .eq('id', chatId)
-
-        // Atualizar lista
         setChats(prev => prev.filter(c => c.id !== chatId))
-
-        // Se o chat excluído era o atual, limpar
-        if (currentChat?.id === chatId) {
-            setCurrentChat(null)
-        }
+        if (currentChat?.id === chatId) setCurrentChat(null)
     }
 
     const handleChatTitleUpdate = (chatId: string, newTitle: string) => {
@@ -151,43 +127,80 @@ export default function DashboardPage() {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-white to-secondary/5">
                 <div className="text-center">
-                    <div className="inline-block animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full"></div>
-                    <p className="text-muted mt-4 font-medium">Carregando...</p>
+                    <Image src="/logo-colorida.png" alt="Reeduca-IA" width={120} height={60} className="mx-auto mb-4" />
+                    <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+                    <p className="text-muted mt-4">Carregando...</p>
                 </div>
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex">
+        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+            {/* Mobile Header */}
+            <header className="md:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-40">
+                <button
+                    onClick={() => setShowSidebar(true)}
+                    className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center"
+                >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+                <Image src="/logo-colorida.png" alt="Logo" width={100} height={40} />
+                <button
+                    onClick={handleNewChat}
+                    className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center"
+                >
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                </button>
+            </header>
+
+            {/* Sidebar Overlay (Mobile) */}
+            {showSidebar && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-50 md:hidden"
+                    onClick={() => setShowSidebar(false)}
+                />
+            )}
+
             {/* Sidebar */}
-            <aside className="w-80 bg-white border-r border-gray-200 flex flex-col shadow-lg">
-                {/* Header da Sidebar */}
-                <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-primary to-primary-dark">
-                    <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            <aside className={`
+                fixed md:relative inset-y-0 left-0 z-50
+                w-[85%] max-w-[320px] md:w-80
+                bg-white border-r border-gray-200 flex flex-col
+                transform transition-transform duration-300 ease-out
+                ${showSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+            `}>
+                {/* Header */}
+                <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-primary to-primary-dark">
+                    <div className="flex items-center justify-between">
+                        <Image src="/logo-branca.png" alt="Logo" width={120} height={50} className="brightness-0 invert" />
+                        <button
+                            onClick={() => setShowSidebar(false)}
+                            className="md:hidden w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center"
+                        >
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
-                        </div>
-                        <div>
-                            <h1 className="text-lg font-bold text-white">Reeduca-IA</h1>
-                            <p className="text-xs text-white/80">
-                                Olá, {profile?.full_name?.split(' ')[0]}!
-                                {profile?.role === 'admin' && (
-                                    <span className="ml-1 bg-white/20 px-2 py-0.5 rounded-full text-[10px]">Admin</span>
-                                )}
-                            </p>
-                        </div>
+                        </button>
                     </div>
+                    <p className="text-white/80 text-sm mt-2">
+                        Olá, {profile?.full_name?.split(' ')[0]}!
+                        {profile?.role === 'admin' && (
+                            <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">Admin</span>
+                        )}
+                    </p>
                 </div>
 
-                {/* Botão Painel Admin - Só aparece para admins */}
+                {/* Admin Button */}
                 {profile?.role === 'admin' && (
-                    <div className="p-4 border-b border-gray-100">
+                    <div className="p-3 border-b border-gray-100">
                         <button
-                            onClick={() => setShowAdminPanel(true)}
-                            className="w-full flex items-center justify-center space-x-2 py-2.5 px-4 bg-gradient-to-r from-secondary to-secondary-dark text-white rounded-xl hover:shadow-lg transition-all font-medium"
+                            onClick={() => { setShowAdminPanel(true); setShowSidebar(false) }}
+                            className="w-full flex items-center justify-center space-x-2 py-3 px-4 bg-secondary text-white rounded-xl font-medium"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -197,11 +210,11 @@ export default function DashboardPage() {
                     </div>
                 )}
 
-                {/* Botão Nova Conversa */}
-                <div className="p-4 border-b border-gray-100">
+                {/* New Chat Button */}
+                <div className="p-3 border-b border-gray-100">
                     <button
                         onClick={handleNewChat}
-                        className="btn-primary w-full flex items-center justify-center space-x-2 py-3 shadow-lg shadow-primary/30"
+                        className="w-full flex items-center justify-center space-x-2 py-3 px-4 bg-primary text-white rounded-xl font-medium shadow-lg shadow-primary/30"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -210,72 +223,60 @@ export default function DashboardPage() {
                     </button>
                 </div>
 
-                {/* Seletor de Cardápio (Opcional) */}
-                <div className="p-4 border-b border-gray-100">
+                {/* Menu Selector */}
+                <div className="p-3 border-b border-gray-100">
                     <div className="flex items-center justify-between mb-2">
-                        <label className="text-sm font-semibold text-gray-700">Meu Cardápio</label>
+                        <span className="text-sm font-semibold text-gray-700">Meu Cardápio</span>
                         <button
-                            onClick={() => setShowAddMenu(true)}
-                            className="text-primary hover:text-primary-dark text-sm font-medium flex items-center space-x-1"
+                            onClick={() => { setShowAddMenu(true); setShowSidebar(false) }}
+                            className="text-primary text-sm font-medium"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                            <span>Adicionar</span>
+                            + Anexar
                         </button>
                     </div>
                     {menus.length > 0 ? (
                         <select
                             value={selectedMenu || ''}
                             onChange={(e) => setSelectedMenu(e.target.value || null)}
-                            className="input py-2.5 text-sm bg-gray-50"
+                            className="input py-2 text-sm"
                         >
                             <option value="">Sem cardápio (dicas gerais)</option>
                             {menus.map((menu) => (
-                                <option key={menu.id} value={menu.id}>
-                                    {menu.title}
-                                </option>
+                                <option key={menu.id} value={menu.id}>{menu.title}</option>
                             ))}
                         </select>
                     ) : (
-                        <div className="bg-gray-50 rounded-xl p-3 text-center">
-                            <p className="text-xs text-muted">
-                                💡 Opcional: anexe seu cardápio para respostas personalizadas
-                            </p>
-                        </div>
+                        <p className="text-xs text-muted bg-gray-50 rounded-xl p-3 text-center">
+                            💡 Anexe seu cardápio para respostas personalizadas
+                        </p>
                     )}
                 </div>
 
-                {/* Lista de Conversas */}
-                <div className="flex-1 overflow-y-auto px-3 pb-2">
-                    <p className="px-2 py-2 text-xs text-muted uppercase tracking-wider font-semibold">Histórico</p>
+                {/* Chat List */}
+                <div className="flex-1 overflow-y-auto p-2">
+                    <p className="px-2 py-2 text-xs text-muted uppercase font-semibold">Histórico</p>
                     {chats.length === 0 ? (
-                        <div className="text-center py-8">
-                            <svg className="w-10 h-10 text-gray-200 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                            <p className="text-sm text-muted">Nenhuma conversa</p>
-                        </div>
+                        <p className="text-sm text-muted text-center py-8">Nenhuma conversa</p>
                     ) : (
                         <div className="space-y-1">
                             {chats.map((chat) => (
                                 <div
                                     key={chat.id}
-                                    className={`group relative w-full text-left p-3 rounded-xl transition-all cursor-pointer ${currentChat?.id === chat.id
-                                        ? 'bg-primary/10 text-primary shadow-sm'
-                                        : 'hover:bg-gray-50 text-gray-700'
+                                    className={`flex items-center p-3 rounded-xl cursor-pointer transition-all ${currentChat?.id === chat.id
+                                            ? 'bg-primary/10 text-primary'
+                                            : 'hover:bg-gray-100 text-gray-700'
                                         }`}
                                     onClick={() => handleSelectChat(chat)}
                                 >
-                                    <p className="font-medium text-sm truncate pr-8">{chat.title}</p>
-                                    <p className="text-xs text-muted mt-0.5">
-                                        {new Date(chat.updated_at).toLocaleDateString('pt-BR')}
-                                    </p>
-                                    {/* Botão Excluir */}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-medium text-sm truncate">{chat.title}</p>
+                                        <p className="text-xs text-muted">
+                                            {new Date(chat.updated_at).toLocaleDateString('pt-BR')}
+                                        </p>
+                                    </div>
                                     <button
-                                        onClick={(e) => handleDeleteChat(chat.id, e)}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-red-100 text-red-600 opacity-0 group-hover:opacity-100 hover:bg-red-200 transition-all flex items-center justify-center"
-                                        title="Excluir conversa"
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteChat(chat.id) }}
+                                        className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center ml-2 flex-shrink-0"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -287,22 +288,22 @@ export default function DashboardPage() {
                     )}
                 </div>
 
-                {/* Footer da Sidebar */}
-                <div className="p-4 border-t border-gray-100 bg-gray-50">
+                {/* Footer */}
+                <div className="p-3 border-t border-gray-100 bg-gray-50">
                     <button
                         onClick={handleLogout}
-                        className="w-full text-sm text-gray-500 hover:text-gray-700 flex items-center justify-center space-x-2 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                        className="w-full text-sm text-gray-500 hover:text-gray-700 flex items-center justify-center space-x-2 py-2"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
-                        <span>Sair da Conta</span>
+                        <span>Sair</span>
                     </button>
                 </div>
             </aside>
 
-            {/* Área Principal - Chat */}
-            <main className="flex-1 flex flex-col">
+            {/* Main Content */}
+            <main className="flex-1 flex flex-col min-h-0 md:h-screen">
                 {currentChat ? (
                     <ChatComponent
                         chat={currentChat}
@@ -310,46 +311,28 @@ export default function DashboardPage() {
                         onTitleUpdate={(newTitle) => handleChatTitleUpdate(currentChat.id, newTitle)}
                     />
                 ) : (
-                    <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-white to-gray-50">
-                        <div className="text-center p-8 max-w-lg">
-                            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary/30">
-                                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                </svg>
-                            </div>
+                    <div className="flex-1 flex items-center justify-center p-6">
+                        <div className="text-center max-w-md">
+                            <Image src="/logo-colorida.png" alt="Logo" width={150} height={75} className="mx-auto mb-6" />
                             <h2 className="text-2xl font-bold text-gray-900 mb-3">
                                 Olá, {profile?.full_name?.split(' ')[0]}! 👋
                             </h2>
                             <p className="text-muted mb-8 leading-relaxed">
-                                Sou sua assistente nutricional inteligente.
-                                Posso te ajudar com dúvidas sobre nutrição,
-                                alimentação saudável e muito mais!
+                                Sou sua assistente nutricional. Posso te ajudar com dúvidas sobre alimentação!
                             </p>
-
                             <button
                                 onClick={handleNewChat}
-                                className="btn-primary inline-flex items-center space-x-2 py-3 px-6 text-lg shadow-lg shadow-primary/30"
+                                className="btn-primary py-3 px-6 text-lg shadow-lg shadow-primary/30"
                             >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                </svg>
-                                <span>Iniciar Conversa</span>
+                                Iniciar Conversa
                             </button>
-
-                            {menus.length === 0 && (
-                                <p className="text-xs text-muted mt-6">
-                                    💡 Dica: Anexe seu cardápio para respostas ainda mais personalizadas!
-                                </p>
-                            )}
                         </div>
                     </div>
                 )}
             </main>
 
-            {/* Modais */}
-            {showAdminPanel && (
-                <AdminPanel onClose={() => setShowAdminPanel(false)} />
-            )}
+            {/* Modals */}
+            {showAdminPanel && <AdminPanel onClose={() => setShowAdminPanel(false)} />}
             {showAddMenu && profile && (
                 <AddMenuModal
                     userId={profile.id}
