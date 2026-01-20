@@ -263,15 +263,15 @@ export default function DashboardPage() {
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
 
                     <div className="relative z-10 flex flex-col items-center justify-center">
-                        <div className="bg-white/20 p-2 rounded-2xl backdrop-blur-sm mb-3 shadow-inner">
-                            <Image src="/logo-branca.png" alt="Logo" width={140} height={60} className="drop-shadow-md" />
+                        <div className="relative w-auto h-12 mb-1 p-1 bg-white/10 rounded-lg backdrop-blur-sm">
+                            <Image src="/logo-branca.png" alt="Logo" width={100} height={40} className="object-contain h-full w-auto" />
                         </div>
-                        <p className="text-white/90 text-sm font-medium">
+                        <p className="text-white font-bold text-xl mt-1 tracking-wide">
                             Olá, {profile?.full_name?.split(' ')[0]}!
-                            {profile?.role === 'admin' && (
-                                <span className="ml-2 bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">Admin</span>
-                            )}
                         </p>
+                        {profile?.role === 'admin' && (
+                            <span className="mt-1 bg-yellow-400 text-yellow-900 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm">Admin</span>
+                        )}
                     </div>
 
                     <button
