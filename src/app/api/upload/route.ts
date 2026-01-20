@@ -7,6 +7,26 @@ import { NextRequest, NextResponse } from 'next/server'
 // Configurar como Node.js runtime (não Edge)
 export const runtime = 'nodejs'
 
+// Workaround para pdf-parse funcionar na Vercel
+// O pdf-parse tenta carregar arquivos de teste que não existem no serverless
+async function parsePDF(buffer: Buffer): Promise<string> {
+    try {
+        // Importar diretamente o módulo interno para evitar o problema de test files
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const pdfParse = require('pdf-parse/lib/pdf-parse.js')
+
+        const data = await pdfParse(buffer)
+        return data.text || ''
+    } catch (err) {
+        // Se falhar, tentar o import padrão
+        console.log('Tentando método alternativo de parse PDF...')
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const pdfParseFallback = require('pdf-parse')
+        const data = await pdfParseFallback(buffer)
+        return data.text || ''
+    }
+}
+
 export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData()
@@ -29,16 +49,7 @@ export async function POST(request: NextRequest) {
         // Extrair texto baseado no tipo de arquivo
         if (fileName.endsWith('.pdf')) {
             try {
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
-                const pdfParse = require('pdf-parse')
-
-                // Opções para tentar ler PDFs problemáticos
-                const options = {
-                    max: 0, // sem limite de páginas
-                }
-
-                const pdfData = await pdfParse(buffer, options)
-                extractedText = pdfData.text
+                extractedText = await parsePDF(buffer)
 
                 // Se não extraiu texto, pode ser um PDF de imagem
                 if (!extractedText || extractedText.trim().length < 10) {
