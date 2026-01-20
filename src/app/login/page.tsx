@@ -135,6 +135,15 @@ export default function LoginPage() {
                             />
                         </div>
 
+                        <div className="flex items-center justify-end">
+                            <Link
+                                href="/esqueci-senha"
+                                className="text-sm font-medium text-primary hover:text-primary-dark hover:underline transition-colors"
+                            >
+                                Esqueci minha senha
+                            </Link>
+                        </div>
+
                         <button
                             type="submit"
                             className="btn-primary w-full"
