@@ -1,43 +1,27 @@
 // ============================================================
-// Callback de Autenticação do Supabase
-// Processa o retorno após confirmação de email
+// Callback de Autenticação - Reeduca-IA
+// Processa confirmação de email e redireciona
 // ============================================================
 
+import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
 
 export async function GET(request: NextRequest) {
-    const { searchParams, origin } = new URL(request.url)
-    const code = searchParams.get('code')
-    const next = searchParams.get('next') ?? '/login'
+    const requestUrl = new URL(request.url)
+    const code = requestUrl.searchParams.get('code')
+    const type = requestUrl.searchParams.get('type')
+    const origin = requestUrl.origin
 
     if (code) {
-        const response = NextResponse.redirect(`${origin}${next}`)
-
-        const supabase = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-                cookies: {
-                    getAll() {
-                        return request.cookies.getAll()
-                    },
-                    setAll(cookiesToSet) {
-                        cookiesToSet.forEach(({ name, value, options }) => {
-                            response.cookies.set(name, value, options)
-                        })
-                    },
-                },
-            }
-        )
-
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-
-        if (!error) {
-            return response
-        }
+        const supabase = await createClient()
+        await supabase.auth.exchangeCodeForSession(code)
     }
 
-    // Retorna para login em caso de erro
-    return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
+    // Se for confirmação de email, redireciona para página de sucesso
+    if (type === 'signup' || type === 'email') {
+        return NextResponse.redirect(`${origin}/email-confirmado`)
+    }
+
+    // Caso padrão: redireciona para login
+    return NextResponse.redirect(`${origin}/login`)
 }
