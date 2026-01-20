@@ -1,15 +1,9 @@
 // ============================================================
 // API de Chat - Reeduca-IA
-// Integração com OpenAI
+// Integração com Google Gemini
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
-
-// Inicializar cliente OpenAI
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-})
 
 // Prompt do sistema - Regras rígidas para a IA
 const SYSTEM_PROMPT = `Você é a Nutri-IA, uma assistente virtual especializada em nutrição da Nutricionista Carla Dantas.
@@ -50,11 +44,13 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Verificar se a chave da OpenAI está configurada
-        if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'sua_chave_openai_aqui') {
+        const apiKey = process.env.GEMINI_API_KEY
+
+        // Verificar se a chave do Gemini está configurada
+        if (!apiKey || apiKey === 'sua_chave_gemini_aqui') {
             return NextResponse.json(
                 {
-                    response: 'Olá! No momento estou em modo de demonstração. Para ativar a IA completa, a chave da OpenAI precisa ser configurada. Entre em contato com a Nutricionista Carla para mais informações. 😊'
+                    response: 'Olá! No momento estou em modo de demonstração. Para ativar a IA completa, a chave do Gemini precisa ser configurada. Entre em contato com a Nutricionista Carla para mais informações. 😊'
                 },
                 { status: 200 }
             )
@@ -63,42 +59,67 @@ export async function POST(request: NextRequest) {
         // Montar o prompt completo
         const systemMessage = SYSTEM_PROMPT + (menuContent || 'Nenhum cardápio específico foi fornecido para este paciente ainda.')
 
-        // Chamar a API da OpenAI
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini', // Modelo mais econômico e rápido
-            messages: [
-                { role: 'system', content: systemMessage },
-                { role: 'user', content: message }
-            ],
-            max_tokens: 1000,
-            temperature: 0.7, // Balanceado entre criatividade e precisão
-        })
+        // Chamar a API do Google Gemini
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [
+                        {
+                            parts: [
+                                { text: `${systemMessage}\n\nPergunta do paciente: ${message}` }
+                            ]
+                        }
+                    ],
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 1000,
+                    },
+                    safetySettings: [
+                        {
+                            category: 'HARM_CATEGORY_HARASSMENT',
+                            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+                        },
+                        {
+                            category: 'HARM_CATEGORY_HATE_SPEECH',
+                            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+                        },
+                        {
+                            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+                            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+                        },
+                        {
+                            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+                            threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+                        }
+                    ]
+                }),
+            }
+        )
 
-        const response = completion.choices[0]?.message?.content ||
+        if (!response.ok) {
+            const errorData = await response.json()
+            console.error('Erro Gemini:', errorData)
+            throw new Error('Erro ao comunicar com a IA')
+        }
+
+        const data = await response.json()
+
+        // Extrair a resposta do Gemini
+        const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text ||
             'Desculpe, não consegui processar sua mensagem. Tente novamente.'
 
-        return NextResponse.json({ response })
+        return NextResponse.json({ response: aiResponse })
 
     } catch (error) {
         console.error('Erro na API de chat:', error)
 
-        // Verificar se é erro de quota ou chave inválida
-        if (error instanceof Error) {
-            if (error.message.includes('quota') || error.message.includes('billing')) {
-                return NextResponse.json({
-                    response: 'O serviço de IA está temporariamente indisponível. Por favor, tente novamente mais tarde ou entre em contato com a Nutricionista Carla.'
-                })
-            }
-            if (error.message.includes('API key')) {
-                return NextResponse.json({
-                    response: 'Configuração de API pendente. Entre em contato com a Nutricionista Carla.'
-                })
-            }
-        }
-
-        return NextResponse.json(
-            { error: 'Erro interno do servidor' },
-            { status: 500 }
-        )
+        return NextResponse.json({
+            response: 'Ocorreu um erro ao processar sua mensagem. Por favor, tente novamente ou entre em contato com a Nutricionista Carla.'
+        })
     }
 }
