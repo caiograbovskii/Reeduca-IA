@@ -61,8 +61,8 @@ export async function POST(request: NextRequest) {
             fullPrompt = SYSTEM_PROMPT_SEM_CARDAPIO + '\n\nPergunta: ' + message
         }
 
-        // Usar modelo gemini-1.5-flash
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
+        // Usar modelo gemini-pro (disponível para todas as chaves)
+        const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`
 
         console.log('Fazendo requisição para Gemini...')
 
