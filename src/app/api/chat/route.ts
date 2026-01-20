@@ -5,43 +5,31 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 
-// Prompt do sistema - Regras rígidas para a IA
+export const runtime = 'nodejs'
+
+// Prompt do sistema
 const SYSTEM_PROMPT_COM_CARDAPIO = `Você é a Nutri-IA, uma assistente virtual especializada em nutrição da Nutricionista Carla Dantas.
 
-REGRAS IMPORTANTES:
-
-1. NUNCA recomende medicamentos, suplementos ou qualquer substância que não seja alimento natural.
-
-2. Baseie suas respostas no cardápio do paciente fornecido abaixo.
-
-3. Seja amigável, didática e use linguagem simples.
-
-4. Use emojis com moderação (🥗, 🍎, 💪, etc).
-
-5. Responda sempre em português brasileiro.
-
-6. Se o paciente perguntar sobre sintomas médicos, oriente-o a consultar um médico.
+REGRAS:
+1. NUNCA recomende medicamentos ou suplementos.
+2. Baseie suas respostas no cardápio fornecido.
+3. Seja amigável e use linguagem simples.
+4. Use emojis com moderação (🥗, 🍎, 💪).
+5. Responda em português brasileiro.
+6. Para sintomas médicos, oriente consultar um médico.
 
 CARDÁPIO DO PACIENTE:
 `
 
 const SYSTEM_PROMPT_SEM_CARDAPIO = `Você é a Nutri-IA, uma assistente virtual especializada em nutrição da Nutricionista Carla Dantas.
 
-REGRAS IMPORTANTES:
-
-1. NUNCA recomende medicamentos, suplementos ou qualquer substância que não seja alimento natural.
-
-2. O paciente ainda não anexou um cardápio, mas você pode ajudar com dúvidas gerais sobre nutrição.
-
-3. Seja amigável, didática e use linguagem simples.
-
-4. Use emojis com moderação (🥗, 🍎, 💪, etc).
-
-5. Responda sempre em português brasileiro.
-
-6. Se o paciente perguntar sobre sintomas médicos, oriente-o a consultar um médico.
-
-Você pode dar dicas gerais de nutrição mesmo sem um cardápio específico!
+REGRAS:
+1. NUNCA recomende medicamentos ou suplementos.
+2. O paciente não anexou cardápio, dê dicas gerais.
+3. Seja amigável e use linguagem simples.
+4. Use emojis com moderação (🥗, 🍎, 💪).
+5. Responda em português brasileiro.
+6. Para sintomas médicos, oriente consultar um médico.
 `
 
 export async function POST(request: NextRequest) {
@@ -50,42 +38,33 @@ export async function POST(request: NextRequest) {
         const { message, menuContent } = body
 
         if (!message) {
-            return NextResponse.json(
-                { error: 'Mensagem é obrigatória' },
-                { status: 400 }
-            )
+            return NextResponse.json({ error: 'Mensagem é obrigatória' }, { status: 400 })
         }
 
         const apiKey = process.env.GEMINI_API_KEY
 
-        // Verificar se a chave do Gemini está configurada
         if (!apiKey) {
-            console.error('GEMINI_API_KEY não configurada')
             return NextResponse.json({
-                response: 'Olá! Para ativar a IA, a chave do Gemini precisa ser configurada. Entre em contato com a Nutricionista Carla. 😊'
+                response: 'A IA precisa ser configurada. Contate a Nutricionista Carla. 😊'
             })
         }
 
-        // Escolher o prompt baseado se tem cardápio ou não
+        // Montar prompt
         let fullPrompt: string
         if (menuContent && menuContent.trim()) {
-            fullPrompt = SYSTEM_PROMPT_COM_CARDAPIO + menuContent + '\n\nPergunta do paciente: ' + message
+            fullPrompt = SYSTEM_PROMPT_COM_CARDAPIO + menuContent + '\n\nPergunta: ' + message
         } else {
-            fullPrompt = SYSTEM_PROMPT_SEM_CARDAPIO + '\n\nPergunta do paciente: ' + message
+            fullPrompt = SYSTEM_PROMPT_SEM_CARDAPIO + '\n\nPergunta: ' + message
         }
 
-        // Usar o modelo gemini-1.5-flash-latest
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`
+        // Testar com modelo gemini-pro (mais estável)
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`
 
         const response = await fetch(apiUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{
-                    parts: [{ text: fullPrompt }]
-                }],
+                contents: [{ parts: [{ text: fullPrompt }] }],
                 generationConfig: {
                     temperature: 0.7,
                     maxOutputTokens: 1000,
@@ -94,47 +73,45 @@ export async function POST(request: NextRequest) {
         })
 
         const responseText = await response.text()
+        console.log('Gemini Response Status:', response.status)
+        console.log('Gemini Response:', responseText.substring(0, 500))
 
         if (!response.ok) {
-            console.error('Erro Gemini HTTP:', response.status, responseText)
+            // Tentar extrair mensagem de erro
+            try {
+                const errorData = JSON.parse(responseText)
+                console.error('Gemini Error:', errorData.error?.message || responseText)
+            } catch {
+                console.error('Gemini Error Raw:', responseText)
+            }
             return NextResponse.json({
-                response: `Estou com dificuldades no momento. Tente novamente em instantes. 🙏`
+                response: `Desculpe, não consegui processar. Tente novamente. 🙏`
             })
         }
 
-        let data
-        try {
-            data = JSON.parse(responseText)
-        } catch {
-            console.error('Erro ao parsear resposta:', responseText)
-            return NextResponse.json({
-                response: 'Erro ao processar resposta. Tente novamente. 🙏'
-            })
-        }
+        const data = JSON.parse(responseText)
 
-        // Verificar se há bloqueio de segurança
         if (data.promptFeedback?.blockReason) {
             return NextResponse.json({
-                response: 'Desculpe, não posso responder a essa pergunta. Tente reformular de outra forma. 🤔'
+                response: 'Não posso responder a essa pergunta. Tente reformular. 🤔'
             })
         }
 
-        // Extrair a resposta do Gemini
         const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text
 
         if (!aiResponse) {
-            console.error('Resposta vazia do Gemini:', JSON.stringify(data))
+            console.error('Resposta vazia:', JSON.stringify(data))
             return NextResponse.json({
-                response: 'Não consegui processar sua mensagem. Pode reformular? 🤔'
+                response: 'Não entendi. Pode reformular sua pergunta? 🤔'
             })
         }
 
         return NextResponse.json({ response: aiResponse })
 
     } catch (error) {
-        console.error('Erro na API de chat:', error)
+        console.error('Erro na API:', error)
         return NextResponse.json({
-            response: 'Erro inesperado. Tente novamente ou contate a Nutricionista Carla. 🙏'
+            response: 'Erro técnico. Tente novamente. 🙏'
         })
     }
 }

@@ -223,7 +223,7 @@ export default function DashboardPage() {
                     </button>
                 </div>
 
-                {/* Menu Selector */}
+                {/* Menu Selector with Delete */}
                 <div className="p-3 border-b border-gray-100">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-semibold text-gray-700">Meu Cardápio</span>
@@ -235,16 +235,32 @@ export default function DashboardPage() {
                         </button>
                     </div>
                     {menus.length > 0 ? (
-                        <select
-                            value={selectedMenu || ''}
-                            onChange={(e) => setSelectedMenu(e.target.value || null)}
-                            className="input py-2 text-sm"
-                        >
-                            <option value="">Sem cardápio (dicas gerais)</option>
-                            {menus.map((menu) => (
-                                <option key={menu.id} value={menu.id}>{menu.title}</option>
-                            ))}
-                        </select>
+                        <div className="space-y-2">
+                            <select
+                                value={selectedMenu || ''}
+                                onChange={(e) => setSelectedMenu(e.target.value || null)}
+                                className="input py-2 text-sm"
+                            >
+                                <option value="">Sem cardápio (dicas gerais)</option>
+                                {menus.map((menu) => (
+                                    <option key={menu.id} value={menu.id}>{menu.title}</option>
+                                ))}
+                            </select>
+                            {selectedMenu && (
+                                <button
+                                    onClick={async () => {
+                                        if (!confirm('Excluir este cardápio?')) return
+                                        const supabase = createClient()
+                                        await supabase.from('menus').delete().eq('id', selectedMenu)
+                                        setMenus(prev => prev.filter(m => m.id !== selectedMenu))
+                                        setSelectedMenu(menus.length > 1 ? menus.find(m => m.id !== selectedMenu)?.id || null : null)
+                                    }}
+                                    className="w-full text-xs text-red-600 bg-red-50 py-2 rounded-lg hover:bg-red-100 transition-colors"
+                                >
+                                    🗑️ Excluir cardápio selecionado
+                                </button>
+                            )}
+                        </div>
                     ) : (
                         <p className="text-xs text-muted bg-gray-50 rounded-xl p-3 text-center">
                             💡 Anexe seu cardápio para respostas personalizadas
@@ -263,8 +279,8 @@ export default function DashboardPage() {
                                 <div
                                     key={chat.id}
                                     className={`flex items-center p-3 rounded-xl cursor-pointer transition-all ${currentChat?.id === chat.id
-                                            ? 'bg-primary/10 text-primary'
-                                            : 'hover:bg-gray-100 text-gray-700'
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'hover:bg-gray-100 text-gray-700'
                                         }`}
                                     onClick={() => handleSelectChat(chat)}
                                 >

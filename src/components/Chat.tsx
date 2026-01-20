@@ -127,33 +127,38 @@ export default function ChatComponent({ chat, menu, onTitleUpdate }: ChatProps) 
     }
 
     return (
-        <div className="flex flex-col h-full bg-white md:bg-gradient-to-b md:from-gray-50 md:to-white">
-            {/* Header - Hidden on mobile (uses dashboard header) */}
-            <div className="hidden md:flex bg-white border-b border-gray-100 px-4 py-3 items-center justify-between">
+        <div className="flex flex-col h-full bg-white">
+            {/* Header - Desktop */}
+            <div className="hidden md:flex bg-gradient-to-r from-primary to-primary-dark px-4 py-3 items-center justify-between">
                 <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                        <Image src="/logo-branca.png" alt="Logo" width={24} height={24} className="brightness-0 invert" />
-                    </div>
-                    <div>
-                        <h2 className="font-bold text-gray-900 text-sm">Nutri-IA</h2>
-                        <div className="flex items-center space-x-1">
-                            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                            <span className="text-xs text-muted">Online</span>
-                        </div>
+                    <Image src="/logo-branca.png" alt="Logo" width={100} height={40} />
+                    <div className="text-white">
+                        <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">Nutri-IA Online</span>
                     </div>
                 </div>
                 {menu && (
-                    <div className="flex items-center space-x-2 bg-secondary/10 px-3 py-1.5 rounded-full">
-                        <svg className="w-3 h-3 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="flex items-center space-x-2 bg-white/20 px-3 py-1.5 rounded-full">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        <span className="text-xs font-medium text-secondary-dark">{menu.title}</span>
+                        <span className="text-xs font-medium text-white">{menu.title}</span>
                     </div>
                 )}
             </div>
 
+            {/* Mobile Header - Simple */}
+            <div className="md:hidden bg-white border-b border-gray-100 px-4 py-3">
+                <div className="flex items-center justify-center space-x-2">
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                        <span className="text-white text-sm">🥗</span>
+                    </div>
+                    <span className="font-semibold text-gray-800">Nutri-IA</span>
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                </div>
+            </div>
+
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto bg-gray-50">
                 <div className="max-w-3xl mx-auto px-4 py-4">
                     {loadingMessages ? (
                         <div className="flex items-center justify-center py-16">
@@ -161,9 +166,7 @@ export default function ChatComponent({ chat, menu, onTitleUpdate }: ChatProps) 
                         </div>
                     ) : messages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-8 text-center">
-                            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                                <span className="text-3xl">🥗</span>
-                            </div>
+                            <Image src="/logo-colorida.png" alt="Logo" width={120} height={60} className="mb-4" />
                             <h3 className="text-lg font-bold text-gray-900 mb-2">Olá! Sou a Nutri-IA 👋</h3>
                             <p className="text-muted text-sm max-w-xs mb-6">
                                 {menu
@@ -180,7 +183,7 @@ export default function ChatComponent({ chat, menu, onTitleUpdate }: ChatProps) 
                                     <button
                                         key={index}
                                         onClick={() => setInput(suggestion)}
-                                        className="text-left p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 hover:border-primary transition-colors"
+                                        className="text-left p-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 hover:border-primary transition-colors shadow-sm"
                                     >
                                         {suggestion}
                                     </button>
@@ -202,7 +205,7 @@ export default function ChatComponent({ chat, menu, onTitleUpdate }: ChatProps) 
                                     <div
                                         className={`max-w-[80%] rounded-2xl px-4 py-3 ${message.role === 'user'
                                                 ? 'bg-primary text-white rounded-br-sm'
-                                                : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+                                                : 'bg-white text-gray-800 rounded-bl-sm shadow-sm border border-gray-100'
                                             }`}
                                     >
                                         <p className="text-sm leading-relaxed whitespace-pre-wrap">
@@ -223,11 +226,11 @@ export default function ChatComponent({ chat, menu, onTitleUpdate }: ChatProps) 
                                     <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center mr-2">
                                         <span className="text-white text-sm">🥗</span>
                                     </div>
-                                    <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3">
+                                    <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm border border-gray-100">
                                         <div className="flex items-center space-x-1">
-                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                            <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                                            <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                            <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                                         </div>
                                     </div>
                                 </div>
@@ -239,7 +242,7 @@ export default function ChatComponent({ chat, menu, onTitleUpdate }: ChatProps) 
             </div>
 
             {/* Input Area */}
-            <div className="border-t border-gray-100 bg-white p-3 safe-area-inset-bottom">
+            <div className="border-t border-gray-200 bg-white p-3 safe-area-inset-bottom">
                 <form onSubmit={handleSend} className="max-w-3xl mx-auto">
                     <div className="flex items-end space-x-2 bg-gray-100 rounded-2xl p-2">
                         <textarea
