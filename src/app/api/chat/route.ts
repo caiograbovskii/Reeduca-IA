@@ -37,6 +37,9 @@ export async function POST(request: NextRequest) {
         const body = await request.json()
         const { message, menuContent } = body
 
+        // Log para debug
+        console.log('Recebida requisição:', { message, hasMenu: !!menuContent })
+
         if (!message) {
             return NextResponse.json({ error: 'Mensagem é obrigatória' }, { status: 400 })
         }
@@ -44,16 +47,54 @@ export async function POST(request: NextRequest) {
         const apiKey = process.env.GEMINI_API_KEY
 
         if (!apiKey) {
-            console.error('GEMINI_API_KEY não encontrada nas variáveis de ambiente')
-            return NextResponse.json({
-                response: 'Chave da API não configurada. Contate o suporte. 😊'
-            })
+            console.error('GEMINI_API_KEY não encontrada')
+            return NextResponse.json({ response: 'Chave API não configurada.' })
         }
 
-        // Log para debug
-        console.log('API Key encontrada:', apiKey.substring(0, 10) + '...')
+        // 1. Listar modelos disponíveis para esta chave
+        console.log('Buscando modelos disponíveis...')
+        const modelsUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
 
-        // Montar prompt
+        let modelName = 'gemini-1.5-flash' // Fallback padrão
+
+        try {
+            const modelsResponse = await fetch(modelsUrl)
+            const modelsData = await modelsResponse.json()
+
+            if (modelsResponse.ok && modelsData.models) {
+                console.log('Modelos encontrados:', modelsData.models.map((m: any) => m.name))
+
+                // Tentar encontrar um gemini que suporte generateContent
+                // Prioridade: gemini-1.5-flash -> gemini-pro -> qualquer gemini
+
+                const availableModels = modelsData.models.filter((m: any) =>
+                    m.name.includes('gemini') &&
+                    m.supportedGenerationMethods.includes('generateContent')
+                )
+
+                if (availableModels.length > 0) {
+                    // Tentar flash primeiro (mais rápido/barato)
+                    const flash = availableModels.find((m: any) => m.name.includes('flash'))
+                    const pro = availableModels.find((m: any) => m.name.includes('pro'))
+
+                    if (flash) {
+                        modelName = flash.name.replace('models/', '')
+                    } else if (pro) {
+                        modelName = pro.name.replace('models/', '')
+                    } else {
+                        modelName = availableModels[0].name.replace('models/', '')
+                    }
+                }
+            } else {
+                console.warn('Não foi possível listar modelos, usando fallback:', modelName)
+            }
+        } catch (e) {
+            console.error('Erro ao buscar lista de modelos:', e)
+        }
+
+        console.log('Modelo selecionado:', modelName)
+
+        // 2. Montar prompt
         let fullPrompt: string
         if (menuContent && menuContent.trim()) {
             fullPrompt = SYSTEM_PROMPT_COM_CARDAPIO + menuContent + '\n\nPergunta: ' + message
@@ -61,12 +102,10 @@ export async function POST(request: NextRequest) {
             fullPrompt = SYSTEM_PROMPT_SEM_CARDAPIO + '\n\nPergunta: ' + message
         }
 
-        // Usar modelo gemini-1.0-pro (nome correto na v1beta)
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${apiKey}`
+        // 3. Usar o modelo selecionado
+        const generateUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`
 
-        console.log('Fazendo requisição para Gemini...')
-
-        const response = await fetch(apiUrl, {
+        const response = await fetch(generateUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -80,54 +119,33 @@ export async function POST(request: NextRequest) {
 
         const responseText = await response.text()
 
-        // Log detalhado
-        console.log('Status HTTP:', response.status)
-        console.log('Headers:', JSON.stringify(Object.fromEntries(response.headers.entries())))
-        console.log('Resposta (primeiros 1000 chars):', responseText.substring(0, 1000))
-
         if (!response.ok) {
-            console.error('Erro HTTP do Gemini:', response.status, responseText)
-
-            // Tentar extrair mensagem de erro
+            let errorMessage = 'Erro desconhecido na API'
             try {
                 const errorData = JSON.parse(responseText)
-                const errorMessage = errorData.error?.message || 'Erro desconhecido'
-                console.error('Mensagem de erro:', errorMessage)
-
-                // Retornar erro específico para debug
-                return NextResponse.json({
-                    response: `Erro da API: ${errorMessage.substring(0, 100)}`
-                })
+                console.error('Erro Gemini Detalhado:', JSON.stringify(errorData, null, 2))
+                errorMessage = errorData.error?.message || errorMessage
             } catch {
-                return NextResponse.json({
-                    response: `Erro HTTP ${response.status}. Verifique os logs.`
-                })
+                console.error('Erro Gemini Raw:', responseText)
             }
+
+            return NextResponse.json({
+                response: `Erro da API (${modelName}): ${errorMessage}`
+            })
         }
 
         const data = JSON.parse(responseText)
-
-        if (data.promptFeedback?.blockReason) {
-            console.log('Bloqueado por:', data.promptFeedback.blockReason)
-            return NextResponse.json({
-                response: 'Não posso responder a essa pergunta. Tente reformular. 🤔'
-            })
-        }
-
         const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text
 
         if (!aiResponse) {
-            console.error('Resposta vazia. Data:', JSON.stringify(data))
-            return NextResponse.json({
-                response: 'Resposta vazia. Tente novamente. 🤔'
-            })
+            console.error('Resposta vazia da IA:', JSON.stringify(data))
+            return NextResponse.json({ response: 'Sem resposta da IA. Tente novamente.' })
         }
 
-        console.log('Sucesso! Resposta recebida.')
         return NextResponse.json({ response: aiResponse })
 
     } catch (error) {
-        console.error('Erro geral na API:', error)
+        console.error('Erro geral no handler:', error)
         return NextResponse.json({
             response: `Erro técnico: ${error instanceof Error ? error.message : 'desconhecido'}`
         })
