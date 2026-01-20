@@ -3,16 +3,14 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
-// @ts-expect-error - pdf-parse não tem tipos
-import pdf from 'pdf-parse/lib/pdf-parse'
-import mammoth from 'mammoth'
+
+// Configurar como Node.js runtime (não Edge)
+export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData()
         const file = formData.get('file') as File
-        const userId = formData.get('userId') as string
-        const title = formData.get('title') as string
 
         if (!file) {
             return NextResponse.json(
@@ -31,7 +29,9 @@ export async function POST(request: NextRequest) {
         // Extrair texto baseado no tipo de arquivo
         if (fileName.endsWith('.pdf')) {
             try {
-                const pdfData = await pdf(buffer)
+                // Importar dinamicamente para evitar problemas no build
+                const pdfParse = (await import('pdf-parse')).default
+                const pdfData = await pdfParse(buffer)
                 extractedText = pdfData.text
             } catch (pdfError) {
                 console.error('Erro ao ler PDF:', pdfError)
@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
             }
         } else if (fileName.endsWith('.docx')) {
             try {
+                const mammoth = (await import('mammoth')).default
                 const result = await mammoth.extractRawText({ buffer })
                 extractedText = result.value
             } catch (docError) {
