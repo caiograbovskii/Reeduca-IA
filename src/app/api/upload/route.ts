@@ -31,7 +31,9 @@ export async function POST(request: NextRequest) {
         if (fileName.endsWith('.pdf')) {
             try {
                 // Usar unpdf para extrair texto (compatível com serverless)
-                const result = await extractText(buffer)
+                // unpdf requer Uint8Array, não Buffer
+                const uint8Array = new Uint8Array(buffer)
+                const result = await extractText(uint8Array)
                 // result.text é um array de strings (uma por página)
                 extractedText = Array.isArray(result.text) ? result.text.join('\n') : (result.text || '')
 
