@@ -11,50 +11,57 @@ import { createClient } from '@/lib/supabase/client'
 export default function AguardandoPage() {
     const router = useRouter()
     const [checking, setChecking] = useState(false)
+    const [debugInfo, setDebugInfo] = useState<string>('')
 
-    // Verificar periodicamente se o usuário foi ativado
+    // Verificar status imediatamente ao carregar a página
     useEffect(() => {
-        const checkStatus = async () => {
+        checkStatus()
+        // Verificar a cada 10 segundos
+        const interval = setInterval(checkStatus, 10000)
+        return () => clearInterval(interval)
+    }, [])
+
+    const checkStatus = async () => {
+        try {
             const supabase = createClient()
-            const { data: { user } } = await supabase.auth.getUser()
+            const { data: { user }, error: userError } = await supabase.auth.getUser()
+
+            if (userError) {
+                setDebugInfo(`Erro ao buscar usuário: ${userError.message}`)
+                return
+            }
 
             if (!user) {
                 router.push('/login')
                 return
             }
 
-            const { data: profile } = await supabase
+            const { data: profile, error: profileError } = await supabase
                 .from('profiles')
                 .select('is_active, role')
                 .eq('id', user.id)
                 .single()
 
-            if (profile?.is_active) {
-                router.push(profile.role === 'admin' ? '/admin' : '/dashboard')
+            if (profileError) {
+                setDebugInfo(`Erro ao buscar perfil: ${profileError.message}`)
+                return
             }
-        }
 
-        // Verificar a cada 10 segundos
-        const interval = setInterval(checkStatus, 10000)
-        return () => clearInterval(interval)
-    }, [router])
+            setDebugInfo(`Perfil: role=${profile?.role}, is_active=${profile?.is_active}`)
+
+            if (profile?.is_active) {
+                const destination = profile.role === 'admin' ? '/admin' : '/dashboard'
+                setDebugInfo(`Redirecionando para: ${destination}`)
+                router.push(destination)
+            }
+        } catch (err) {
+            setDebugInfo(`Erro inesperado: ${err}`)
+        }
+    }
 
     const handleCheckNow = async () => {
         setChecking(true)
-        const supabase = createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-
-        if (user) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('is_active, role')
-                .eq('id', user.id)
-                .single()
-
-            if (profile?.is_active) {
-                router.push(profile.role === 'admin' ? '/admin' : '/dashboard')
-            }
-        }
+        await checkStatus()
         setChecking(false)
     }
 
@@ -94,6 +101,13 @@ export default function AguardandoPage() {
                     Agora, nossa equipe irá avaliar seus dados.
                     Em breve você receberá acesso ao sistema.
                 </p>
+
+                {/* Debug info - remover depois */}
+                {debugInfo && (
+                    <div className="bg-gray-100 rounded-xl p-3 mb-4 text-xs text-left font-mono">
+                        {debugInfo}
+                    </div>
+                )}
 
                 <div className="bg-primary-light/20 rounded-xl p-4 mb-6">
                     <p className="text-sm text-gray-700">
