@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
         // Extrair texto baseado no tipo de arquivo
         if (fileName.endsWith('.pdf')) {
             try {
-                // Importar dinamicamente para evitar problemas no build
-                const pdfParse = (await import('pdf-parse')).default
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                const pdfParse = require('pdf-parse')
                 const pdfData = await pdfParse(buffer)
                 extractedText = pdfData.text
             } catch (pdfError) {
@@ -42,7 +42,8 @@ export async function POST(request: NextRequest) {
             }
         } else if (fileName.endsWith('.docx')) {
             try {
-                const mammoth = (await import('mammoth')).default
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                const mammoth = require('mammoth')
                 const result = await mammoth.extractRawText({ buffer })
                 extractedText = result.value
             } catch (docError) {
