@@ -7,24 +7,34 @@ import { NextRequest, NextResponse } from 'next/server'
 // Configurar como Node.js runtime (não Edge)
 export const runtime = 'nodejs'
 
-// Workaround para pdf-parse funcionar na Vercel
-// O pdf-parse tenta carregar arquivos de teste que não existem no serverless
-async function parsePDF(buffer: Buffer): Promise<string> {
-    try {
-        // Importar diretamente o módulo interno para evitar o problema de test files
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const pdfParse = require('pdf-parse/lib/pdf-parse.js')
+// Função para extrair texto de PDF usando pdfjs-dist
+async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+    // Importar pdfjs-dist
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
 
-        const data = await pdfParse(buffer)
-        return data.text || ''
-    } catch (err) {
-        // Se falhar, tentar o import padrão
-        console.log('Tentando método alternativo de parse PDF...')
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const pdfParseFallback = require('pdf-parse')
-        const data = await pdfParseFallback(buffer)
-        return data.text || ''
+    // Converter buffer para Uint8Array
+    const uint8Array = new Uint8Array(buffer)
+
+    // Carregar o documento PDF
+    const loadingTask = pdfjsLib.getDocument({
+        data: uint8Array,
+        useSystemFonts: true,
+    })
+
+    const pdf = await loadingTask.promise
+    let fullText = ''
+
+    // Extrair texto de cada página
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i)
+        const textContent = await page.getTextContent()
+        const pageText = textContent.items
+            .map((item: any) => item.str)
+            .join(' ')
+        fullText += pageText + '\n'
     }
+
+    return fullText
 }
 
 export async function POST(request: NextRequest) {
@@ -49,7 +59,7 @@ export async function POST(request: NextRequest) {
         // Extrair texto baseado no tipo de arquivo
         if (fileName.endsWith('.pdf')) {
             try {
-                extractedText = await parsePDF(buffer)
+                extractedText = await extractTextFromPDF(buffer)
 
                 // Se não extraiu texto, pode ser um PDF de imagem
                 if (!extractedText || extractedText.trim().length < 10) {
@@ -63,7 +73,7 @@ export async function POST(request: NextRequest) {
                 console.error('Erro ao ler PDF:', pdfError?.message || pdfError)
 
                 // Verificar tipos específicos de erro
-                if (pdfError?.message?.includes('password')) {
+                if (pdfError?.message?.includes('password') || pdfError?.message?.includes('encrypted')) {
                     return NextResponse.json(
                         { error: 'Este PDF está protegido por senha. Remova a senha e tente novamente.' },
                         { status: 400 }
@@ -71,7 +81,7 @@ export async function POST(request: NextRequest) {
                 }
 
                 return NextResponse.json(
-                    { error: 'Não foi possível ler este PDF. Tente salvar como Word (.docx) ou copie o texto para um arquivo .txt' },
+                    { error: `Erro ao processar PDF: ${pdfError?.message || 'Erro desconhecido'}. Tente salvar como Word (.docx).` },
                     { status: 400 }
                 )
             }
@@ -124,10 +134,10 @@ export async function POST(request: NextRequest) {
             size: file.size,
         })
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Erro no upload:', error)
         return NextResponse.json(
-            { error: 'Erro ao processar o arquivo.' },
+            { error: `Erro ao processar o arquivo: ${error?.message || 'Erro desconhecido'}` },
             { status: 500 }
         )
     }
