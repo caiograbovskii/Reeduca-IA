@@ -1,48 +1,50 @@
 import Link from 'next/link'
 import Image from 'next/image'
 
-// Testemunhos falsos para prova social
+// Testemunhos falsos para prova social (apenas mulheres, sem imagens externas)
 const TESTIMONIALS = [
   {
     name: 'Mariana Silva',
     role: 'Paciente há 3 meses',
     content: 'A Nutri-IA me ajudou muito a entender as substituições do meu cardápio. Agora não fico perdida quando falta algum ingrediente!',
     rating: 5,
-    image: 'https://randomuser.me/api/portraits/women/44.jpg'
   },
   {
-    name: 'Carlos Oliveira',
+    name: 'Juliana Costa',
     role: 'Paciente há 1 mês',
-    content: 'Increável como ela responde rápido e com precisão sobre o meu plano alimentar. É como ter a nutri no bolso o tempo todo.',
+    content: 'Maravilhoso! Consigo tirar dúvidas na hora que estou no mercado. Facilitou demais minha reeducação alimentar.',
     rating: 5,
-    image: 'https://randomuser.me/api/portraits/men/32.jpg'
   },
   {
     name: 'Fernanda Santos',
     role: 'Paciente há 6 meses',
-    content: 'Adorei a facilidade de tirar dúvidas sobre o que comer antes do treino. Melhorou muito meus resultados!',
+    content: 'Adorei a facilidade de saber o que comer antes do treino sem precisar mandar mensagem toda hora. Muito prático.',
     rating: 4,
-    image: 'https://randomuser.me/api/portraits/women/68.jpg'
   },
 ]
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-pink-50/10 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-pink-50/20 flex flex-col">
       {/* Header / Navbar */}
-      <header className="fixed w-full bg-white/80 backdrop-blur-md border-b border-gray-100 z-50">
+      <header className="fixed w-full bg-white/90 backdrop-blur-md border-b border-gray-100 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            {/* Logo Colorida no Header */}
-            <div className="relative w-40 h-12">
-              <Image src="/logo-colorida.png" alt="Reeduca.IA" fill className="object-contain object-left" />
+            {/* Logo Colorida - Maior e com Nome */}
+            <div className="flex items-center space-x-4">
+              <div className="relative w-16 h-16">
+                <Image src="/logo-colorida.png" alt="Logo" fill className="object-contain" />
+              </div>
+              <span className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary hidden sm:block">
+                Reeduca-IA
+              </span>
             </div>
           </div>
           <div className="flex items-center space-x-4">
             <Link href="/login" className="text-gray-600 hover:text-primary font-medium transition-colors">
               Entrar
             </Link>
-            <Link href="/cadastro" className="btn-primary py-2.5 px-6 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all">
+            <Link href="/cadastro" className="hidden sm:inline-flex btn-primary py-2.5 px-6 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all">
               Começar Agora
             </Link>
           </div>
@@ -111,17 +113,17 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Testimonials - Prova Social (Substituindo o box branco) */}
+        {/* Testimonials - Prova Social (Apenas Mulheres, sem foto) */}
         <section className="py-24 bg-gradient-to-b from-gray-50 to-white overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">O que nossos pacientes dizem</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">O que nossas pacientes dizem</h2>
               <p className="text-muted text-lg">Histórias reais de quem transformou sua alimentação</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {TESTIMONIALS.map((testimonial, i) => (
-                <div key={i} className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 relative">
+                <div key={i} className="bg-white p-8 rounded-3xl shadow-lg shadow-gray-100 border border-gray-100 relative hover:-translate-y-1 transition-transform duration-300">
                   {/* Aspas */}
                   <div className="absolute top-6 right-8 text-6xl text-primary/10 font-serif">"</div>
 
@@ -133,20 +135,19 @@ export default function Home() {
                     ))}
                   </div>
 
-                  <p className="text-gray-700 italic mb-8 relative z-10 leading-relaxed">
+                  <p className="text-gray-600 italic mb-8 relative z-10 leading-relaxed text-lg">
                     "{testimonial.content}"
                   </p>
 
-                  <div className="flex items-center space-x-4 border-t border-gray-100 pt-6">
-                    <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden relative">
-                      {/* Using generic avatar since external images might break or be blocked */}
-                      <div className="w-full h-full bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center text-primary font-bold text-lg">
+                  <div className="border-t border-gray-100 pt-6">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
                         {testimonial.name.charAt(0)}
                       </div>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900">{testimonial.name}</h4>
-                      <p className="text-sm text-gray-500">{testimonial.role}</p>
+                      <div>
+                        <h4 className="font-bold text-gray-900">{testimonial.name}</h4>
+                        <p className="text-sm text-gray-500">{testimonial.role}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -159,8 +160,11 @@ export default function Home() {
       {/* Footer */}
       <footer className="bg-white border-t border-gray-100 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between">
-          <div className="mb-4 md:mb-0">
-            <Image src="/logo-colorida.png" alt="Logo" width={120} height={40} className="grayscale hover:grayscale-0 transition-all opacity-70 hover:opacity-100" />
+          <div className="flex items-center space-x-2 mb-4 md:mb-0">
+            <div className="relative w-8 h-8">
+              <Image src="/logo-colorida.png" alt="Logo" fill className="object-contain" />
+            </div>
+            <span className="font-bold text-gray-700">Reeduca-IA</span>
           </div>
           <p className="text-gray-400 text-sm">
             © 2024 Reeduca.IA - Todos os direitos reservados.
