@@ -90,7 +90,7 @@ export async function updateSession(request: NextRequest) {
             // Se está ativo mas tentando acessar página de aguardando, redireciona para dashboard
             if (profile.is_active && request.nextUrl.pathname === '/aguardando') {
                 const url = request.nextUrl.clone()
-                url.pathname = profile.role === 'admin' ? '/admin' : '/dashboard'
+                url.pathname = '/dashboard'
                 return NextResponse.redirect(url)
             }
 

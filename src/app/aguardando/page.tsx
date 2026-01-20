@@ -50,9 +50,8 @@ export default function AguardandoPage() {
             setDebugInfo(`Perfil: role=${profile?.role}, is_active=${profile?.is_active}`)
 
             if (profile?.is_active) {
-                const destination = profile.role === 'admin' ? '/admin' : '/dashboard'
-                setDebugInfo(`Redirecionando para: ${destination}`)
-                router.push(destination)
+                // Todos vão para o dashboard (admin tem botão especial lá)
+                router.push('/dashboard')
             }
         } catch (err) {
             setDebugInfo(`Erro inesperado: ${err}`)
