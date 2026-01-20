@@ -12,9 +12,10 @@ import type { Chat, Menu, Message } from '@/types'
 interface ChatProps {
     chat: Chat
     menu: Menu | null
+    onTitleUpdate?: (newTitle: string) => void
 }
 
-export default function ChatComponent({ chat, menu }: ChatProps) {
+export default function ChatComponent({ chat, menu, onTitleUpdate }: ChatProps) {
     const [messages, setMessages] = useState<Message[]>([])
     const [input, setInput] = useState('')
     const [loading, setLoading] = useState(false)
@@ -60,6 +61,30 @@ export default function ChatComponent({ chat, menu }: ChatProps) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
 
+    // Gerar título inteligente baseado na primeira mensagem
+    const generateSmartTitle = (message: string): string => {
+        // Limpar e truncar
+        let title = message.trim()
+
+        // Remover quebras de linha
+        title = title.replace(/\n/g, ' ')
+
+        // Se muito longo, pegar primeiras palavras
+        if (title.length > 40) {
+            const words = title.split(' ').slice(0, 6)
+            title = words.join(' ')
+            if (title.length > 40) {
+                title = title.substring(0, 40)
+            }
+            title += '...'
+        }
+
+        // Capitalizar primeira letra
+        title = title.charAt(0).toUpperCase() + title.slice(1)
+
+        return title
+    }
+
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!input.trim() || loading) return
@@ -69,6 +94,7 @@ export default function ChatComponent({ chat, menu }: ChatProps) {
         setLoading(true)
 
         const supabase = createClient()
+        const isFirstMessage = messages.length === 0
 
         try {
             // Salvar mensagem do usuário no banco
@@ -84,6 +110,20 @@ export default function ChatComponent({ chat, menu }: ChatProps) {
 
             if (savedUserMessage) {
                 setMessages(prev => [...prev, savedUserMessage])
+            }
+
+            // Se for a primeira mensagem, atualizar título do chat
+            if (isFirstMessage) {
+                const newTitle = generateSmartTitle(userMessage)
+                await supabase
+                    .from('chats')
+                    .update({ title: newTitle })
+                    .eq('id', chat.id)
+
+                // Notificar o parent para atualizar a lista
+                if (onTitleUpdate) {
+                    onTitleUpdate(newTitle)
+                }
             }
 
             // Chamar API para obter resposta da IA
@@ -118,14 +158,6 @@ export default function ChatComponent({ chat, menu }: ChatProps) {
                 setMessages(prev => [...prev, savedAssistantMessage])
             }
 
-            // Atualizar título do chat se for a primeira mensagem
-            if (messages.length === 0) {
-                const title = userMessage.slice(0, 50) + (userMessage.length > 50 ? '...' : '')
-                await supabase
-                    .from('chats')
-                    .update({ title })
-                    .eq('id', chat.id)
-            }
         } catch (error) {
             console.error('Erro ao enviar mensagem:', error)
             setMessages(prev => [...prev, {
@@ -189,16 +221,17 @@ export default function ChatComponent({ chat, menu }: ChatProps) {
                                 Olá! Sou a Nutri-IA 👋
                             </h3>
                             <p className="text-muted max-w-md mb-8 leading-relaxed">
-                                Estou aqui para te ajudar com dúvidas sobre seu cardápio nutricional.
-                                Pode me perguntar sobre substituições de alimentos, dicas de preparo,
-                                horários das refeições e muito mais!
+                                {menu
+                                    ? `Estou pronta para te ajudar com dúvidas sobre seu cardápio "${menu.title}". Pode perguntar!`
+                                    : 'Posso te ajudar com dúvidas gerais sobre nutrição e alimentação saudável. Pergunte o que quiser!'
+                                }
                             </p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-md">
                                 {[
-                                    'Posso substituir o arroz por outro alimento?',
-                                    'O que comer no lanche da tarde?',
-                                    'Posso beber café depois do almoço?',
-                                    'Como preparar o frango grelhado?',
+                                    'Quais alimentos são ricos em proteína?',
+                                    'O que comer antes de treinar?',
+                                    'Como ter uma alimentação mais saudável?',
+                                    'Quantos litros de água devo beber?',
                                 ].map((suggestion, index) => (
                                     <button
                                         key={index}
@@ -212,7 +245,7 @@ export default function ChatComponent({ chat, menu }: ChatProps) {
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            {messages.map((message, index) => (
+                            {messages.map((message) => (
                                 <div
                                     key={message.id}
                                     className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}

@@ -82,15 +82,16 @@ export default function DashboardPage() {
     }
 
     const handleNewChat = async () => {
-        if (!profile || !selectedMenu) return
+        if (!profile) return
 
         const supabase = createClient()
 
+        // Criar nova conversa (cardápio é opcional)
         const { data: newChat, error } = await supabase
             .from('chats')
             .insert({
                 user_id: profile.id,
-                menu_id: selectedMenu,
+                menu_id: selectedMenu || null,
                 title: 'Nova Conversa',
             })
             .select()
@@ -104,6 +105,40 @@ export default function DashboardPage() {
 
     const handleSelectChat = (chat: Chat) => {
         setCurrentChat(chat)
+    }
+
+    const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
+        e.stopPropagation()
+
+        if (!confirm('Tem certeza que deseja excluir esta conversa?')) return
+
+        const supabase = createClient()
+
+        // Deletar mensagens primeiro
+        await supabase
+            .from('messages')
+            .delete()
+            .eq('chat_id', chatId)
+
+        // Deletar o chat
+        await supabase
+            .from('chats')
+            .delete()
+            .eq('id', chatId)
+
+        // Atualizar lista
+        setChats(prev => prev.filter(c => c.id !== chatId))
+
+        // Se o chat excluído era o atual, limpar
+        if (currentChat?.id === chatId) {
+            setCurrentChat(null)
+        }
+    }
+
+    const handleChatTitleUpdate = (chatId: string, newTitle: string) => {
+        setChats(prev => prev.map(c =>
+            c.id === chatId ? { ...c, title: newTitle } : c
+        ))
     }
 
     const handleLogout = async () => {
@@ -162,7 +197,20 @@ export default function DashboardPage() {
                     </div>
                 )}
 
-                {/* Seletor de Cardápio */}
+                {/* Botão Nova Conversa */}
+                <div className="p-4 border-b border-gray-100">
+                    <button
+                        onClick={handleNewChat}
+                        className="btn-primary w-full flex items-center justify-center space-x-2 py-3 shadow-lg shadow-primary/30"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span>Nova Conversa</span>
+                    </button>
+                </div>
+
+                {/* Seletor de Cardápio (Opcional) */}
                 <div className="p-4 border-b border-gray-100">
                     <div className="flex items-center justify-between mb-2">
                         <label className="text-sm font-semibold text-gray-700">Meu Cardápio</label>
@@ -179,9 +227,10 @@ export default function DashboardPage() {
                     {menus.length > 0 ? (
                         <select
                             value={selectedMenu || ''}
-                            onChange={(e) => setSelectedMenu(e.target.value)}
+                            onChange={(e) => setSelectedMenu(e.target.value || null)}
                             className="input py-2.5 text-sm bg-gray-50"
                         >
+                            <option value="">Sem cardápio (dicas gerais)</option>
                             {menus.map((menu) => (
                                 <option key={menu.id} value={menu.id}>
                                     {menu.title}
@@ -189,33 +238,12 @@ export default function DashboardPage() {
                             ))}
                         </select>
                     ) : (
-                        <div className="bg-gray-50 rounded-xl p-4 text-center">
-                            <svg className="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <p className="text-sm text-muted mb-2">Nenhum cardápio ainda</p>
-                            <button
-                                onClick={() => setShowAddMenu(true)}
-                                className="text-primary font-medium text-sm hover:underline"
-                            >
-                                + Adicionar Cardápio
-                            </button>
+                        <div className="bg-gray-50 rounded-xl p-3 text-center">
+                            <p className="text-xs text-muted">
+                                💡 Opcional: anexe seu cardápio para respostas personalizadas
+                            </p>
                         </div>
                     )}
-                </div>
-
-                {/* Botão Nova Conversa */}
-                <div className="p-4">
-                    <button
-                        onClick={handleNewChat}
-                        disabled={!selectedMenu}
-                        className="btn-primary w-full flex items-center justify-center space-x-2 py-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/30"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                        <span>Nova Conversa</span>
-                    </button>
                 </div>
 
                 {/* Lista de Conversas */}
@@ -231,19 +259,29 @@ export default function DashboardPage() {
                     ) : (
                         <div className="space-y-1">
                             {chats.map((chat) => (
-                                <button
+                                <div
                                     key={chat.id}
-                                    onClick={() => handleSelectChat(chat)}
-                                    className={`w-full text-left p-3 rounded-xl transition-all ${currentChat?.id === chat.id
+                                    className={`group relative w-full text-left p-3 rounded-xl transition-all cursor-pointer ${currentChat?.id === chat.id
                                         ? 'bg-primary/10 text-primary shadow-sm'
                                         : 'hover:bg-gray-50 text-gray-700'
                                         }`}
+                                    onClick={() => handleSelectChat(chat)}
                                 >
-                                    <p className="font-medium text-sm truncate">{chat.title}</p>
+                                    <p className="font-medium text-sm truncate pr-8">{chat.title}</p>
                                     <p className="text-xs text-muted mt-0.5">
                                         {new Date(chat.updated_at).toLocaleDateString('pt-BR')}
                                     </p>
-                                </button>
+                                    {/* Botão Excluir */}
+                                    <button
+                                        onClick={(e) => handleDeleteChat(chat.id, e)}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg bg-red-100 text-red-600 opacity-0 group-hover:opacity-100 hover:bg-red-200 transition-all flex items-center justify-center"
+                                        title="Excluir conversa"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
                             ))}
                         </div>
                     )}
@@ -269,6 +307,7 @@ export default function DashboardPage() {
                     <ChatComponent
                         chat={currentChat}
                         menu={menus.find(m => m.id === selectedMenu) || null}
+                        onTitleUpdate={(newTitle) => handleChatTitleUpdate(currentChat.id, newTitle)}
                     />
                 ) : (
                     <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-white to-gray-50">
@@ -283,35 +322,24 @@ export default function DashboardPage() {
                             </h2>
                             <p className="text-muted mb-8 leading-relaxed">
                                 Sou sua assistente nutricional inteligente.
-                                Posso te ajudar com dúvidas sobre seu cardápio,
-                                substituições de alimentos e muito mais!
+                                Posso te ajudar com dúvidas sobre nutrição,
+                                alimentação saudável e muito mais!
                             </p>
 
-                            {selectedMenu ? (
-                                <button
-                                    onClick={handleNewChat}
-                                    className="btn-primary inline-flex items-center space-x-2 py-3 px-6 text-lg shadow-lg shadow-primary/30"
-                                >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                    </svg>
-                                    <span>Iniciar Conversa</span>
-                                </button>
-                            ) : (
-                                <div className="bg-secondary/10 rounded-2xl p-6">
-                                    <p className="text-secondary-dark font-medium mb-3">
-                                        Primeiro, adicione seu cardápio nutricional
-                                    </p>
-                                    <button
-                                        onClick={() => setShowAddMenu(true)}
-                                        className="btn-secondary inline-flex items-center space-x-2"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                        </svg>
-                                        <span>Adicionar Cardápio</span>
-                                    </button>
-                                </div>
+                            <button
+                                onClick={handleNewChat}
+                                className="btn-primary inline-flex items-center space-x-2 py-3 px-6 text-lg shadow-lg shadow-primary/30"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
+                                <span>Iniciar Conversa</span>
+                            </button>
+
+                            {menus.length === 0 && (
+                                <p className="text-xs text-muted mt-6">
+                                    💡 Dica: Anexe seu cardápio para respostas ainda mais personalizadas!
+                                </p>
                             )}
                         </div>
                     </div>
