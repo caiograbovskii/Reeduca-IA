@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
             try {
                 // Usar unpdf para extrair texto (compatível com serverless)
                 const result = await extractText(buffer)
-                extractedText = result.text || ''
+                // result.text é um array de strings (uma por página)
+                extractedText = Array.isArray(result.text) ? result.text.join('\n') : (result.text || '')
 
                 // Se não extraiu texto, pode ser um PDF de imagem
                 if (!extractedText || extractedText.trim().length < 10) {
