@@ -3,39 +3,10 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
+import { extractText } from 'unpdf'
 
 // Configurar como Node.js runtime (não Edge)
 export const runtime = 'nodejs'
-
-// Função para extrair texto de PDF usando pdfjs-dist
-async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-    // Importar pdfjs-dist
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
-
-    // Converter buffer para Uint8Array
-    const uint8Array = new Uint8Array(buffer)
-
-    // Carregar o documento PDF
-    const loadingTask = pdfjsLib.getDocument({
-        data: uint8Array,
-        useSystemFonts: true,
-    })
-
-    const pdf = await loadingTask.promise
-    let fullText = ''
-
-    // Extrair texto de cada página
-    for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i)
-        const textContent = await page.getTextContent()
-        const pageText = textContent.items
-            .map((item: any) => item.str)
-            .join(' ')
-        fullText += pageText + '\n'
-    }
-
-    return fullText
-}
 
 export async function POST(request: NextRequest) {
     try {
@@ -59,7 +30,9 @@ export async function POST(request: NextRequest) {
         // Extrair texto baseado no tipo de arquivo
         if (fileName.endsWith('.pdf')) {
             try {
-                extractedText = await extractTextFromPDF(buffer)
+                // Usar unpdf para extrair texto (compatível com serverless)
+                const result = await extractText(buffer)
+                extractedText = result.text || ''
 
                 // Se não extraiu texto, pode ser um PDF de imagem
                 if (!extractedText || extractedText.trim().length < 10) {
