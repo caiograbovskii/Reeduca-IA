@@ -30,23 +30,32 @@ export default function LoginPage() {
             })
 
             if (authError) {
+                console.error('Erro de autenticação:', authError)
                 if (authError.message.includes('Email not confirmed')) {
                     setError('Por favor, confirme seu email antes de fazer login. Verifique sua caixa de entrada.')
                 } else if (authError.message.includes('Invalid login credentials')) {
                     setError('Email ou senha incorretos. Tente novamente.')
                 } else {
-                    setError(authError.message)
+                    setError(`Erro: ${authError.message}`)
                 }
+                setLoading(false)
                 return
             }
 
             if (data.user) {
                 // Buscar perfil do usuário
-                const { data: profile } = await supabase
+                const { data: profile, error: profileError } = await supabase
                     .from('profiles')
                     .select('is_active, role')
                     .eq('id', data.user.id)
                     .single()
+
+                if (profileError) {
+                    console.error('Erro ao buscar perfil:', profileError)
+                    // Se não encontrou perfil, pode ser usuário novo - vai para aguardando
+                    router.push('/aguardando')
+                    return
+                }
 
                 if (profile && !profile.is_active) {
                     router.push('/aguardando')
@@ -56,9 +65,10 @@ export default function LoginPage() {
                     router.push('/dashboard')
                 }
             }
-        } catch (err) {
-            setError('Ocorreu um erro inesperado. Tente novamente.')
-            console.error(err)
+        } catch (err: unknown) {
+            console.error('Erro inesperado:', err)
+            const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
+            setError(`Erro ao conectar: ${errorMessage}`)
         } finally {
             setLoading(false)
         }
