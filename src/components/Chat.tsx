@@ -235,7 +235,7 @@ export default function ChatComponent({ chat, menu, onTitleUpdate }: ChatProps) 
                             {messages.map((message) => (
                                 <div
                                     key={message.id}
-                                    className={`flex ${message.createdAt ? 'justify-end' : message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                 >
                                     {message.role === 'assistant' && (
                                         <div className="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center mr-3 flex-shrink-0 shadow-sm overflow-hidden">
@@ -244,8 +244,8 @@ export default function ChatComponent({ chat, menu, onTitleUpdate }: ChatProps) 
                                     )}
                                     <div
                                         className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-3.5 shadow-sm text-sm leading-relaxed whitespace-pre-wrap ${message.role === 'user'
-                                                ? 'bg-primary text-white rounded-br-sm'
-                                                : 'bg-white text-gray-700 rounded-bl-sm border border-gray-100'
+                                            ? 'bg-primary text-white rounded-br-sm'
+                                            : 'bg-white text-gray-700 rounded-bl-sm border border-gray-100'
                                             }`}
                                     >
                                         {message.role === 'user' ? (
