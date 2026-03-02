@@ -1,23 +1,28 @@
 // ============================================================
 // API de Admin - Listar e Gerenciar Usuários
-// Roda no servidor para contornar RLS
+// Valida a sessão via cookies para segurança
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 
-// Criar cliente admin com service role (ignora RLS)
-const getAdminClient = () => {
+// Criar cliente admin com service role (ignora RLS, usado para ler perfis de terceiros)
+const getAdminSupabaseClient = () => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
     if (!supabaseUrl || !supabaseServiceKey) {
-        throw new Error('Variáveis de ambiente do Supabase não configuradas')
+        console.error('Erro de configuração Supabase:', {
+            hasUrl: !!supabaseUrl,
+            hasKey: !!supabaseServiceKey
+        })
+        throw new Error(`Configuração inválida: URL=${!!supabaseUrl}, Key=${!!supabaseServiceKey}`)
     }
 
-    return createClient(supabaseUrl, supabaseServiceKey, {
+    return createAdminClient(supabaseUrl, supabaseServiceKey, {
         auth: {
             autoRefreshToken: false,
             persistSession: false
@@ -28,19 +33,23 @@ const getAdminClient = () => {
 // GET - Listar todos os usuários
 export async function GET(request: NextRequest) {
     try {
-        const adminId = request.nextUrl.searchParams.get('adminId')
+        // Obter cliente com sessão validada do cookie atual
+        const supabase = await createClient()
 
-        if (!adminId) {
-            return NextResponse.json({ error: 'Admin ID é obrigatório' }, { status: 400 })
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
         }
 
-        const supabase = getAdminClient()
+        // Cliente para rodar consultas admin bypassing RLS se necessário
+        const adminSupabase = getAdminSupabaseClient()
 
-        // Verificar se é admin
-        const { data: adminProfile } = await supabase
+        // Verificar se o usuário verificado no cookie de fato é admin
+        const { data: adminProfile } = await adminSupabase
             .from('profiles')
             .select('role')
-            .eq('id', adminId)
+            .eq('id', user.id)
             .single()
 
         if (adminProfile?.role !== 'admin') {
@@ -48,10 +57,10 @@ export async function GET(request: NextRequest) {
         }
 
         // Buscar todos os usuários exceto o admin
-        const { data: users, error } = await supabase
+        const { data: users, error } = await adminSupabase
             .from('profiles')
             .select('*')
-            .neq('id', adminId)
+            .neq('id', user.id)
             .order('created_at', { ascending: false })
 
         if (error) {
@@ -61,29 +70,40 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ users })
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Erro na API admin:', error)
-        return NextResponse.json({ error: 'Erro interno' }, { status: 500 })
+        return NextResponse.json({
+            error: `Erro técnico: ${error.message || 'Desconhecido'}`
+        }, { status: 500 })
     }
 }
 
 // PATCH - Ativar/Desativar usuário
 export async function PATCH(request: NextRequest) {
     try {
-        const body = await request.json()
-        const { adminId, userId, isActive } = body
+        // Obter cliente com sessão validada do cookie atual
+        const supabase = await createClient()
 
-        if (!adminId || !userId || isActive === undefined) {
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+        }
+
+        const body = await request.json()
+        const { userId, isActive } = body
+
+        if (!userId || isActive === undefined) {
             return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 })
         }
 
-        const supabase = getAdminClient()
+        const adminSupabase = getAdminSupabaseClient()
 
         // Verificar se é admin
-        const { data: adminProfile } = await supabase
+        const { data: adminProfile } = await adminSupabase
             .from('profiles')
             .select('role')
-            .eq('id', adminId)
+            .eq('id', user.id)
             .single()
 
         if (adminProfile?.role !== 'admin') {
@@ -91,7 +111,7 @@ export async function PATCH(request: NextRequest) {
         }
 
         // Atualizar usuário
-        const { error } = await supabase
+        const { error } = await adminSupabase
             .from('profiles')
             .update({ is_active: isActive })
             .eq('id', userId)

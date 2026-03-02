@@ -35,8 +35,8 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                 return
             }
 
-            // Usar API server-side para buscar usuários
-            const response = await fetch(`/api/admin?adminId=${user.id}`)
+            // Usar API server-side para buscar usuários (sessão lida do cookie pelo servidor)
+            const response = await fetch('/api/admin')
             const data = await response.json()
 
             if (response.ok && data.users) {
@@ -58,11 +58,12 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
             const supabase = createClient()
             const { data: { user } } = await supabase.auth.getUser()
 
+            if (!user) return;
+
             const response = await fetch('/api/admin', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    adminId: user?.id,
                     userId,
                     isActive: activate
                 })
@@ -137,8 +138,8 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                             key={f.key}
                             onClick={() => setFilter(f.key as 'pending' | 'active' | 'all')}
                             className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${filter === f.key
-                                    ? `${f.color} text-white`
-                                    : 'bg-gray-100 text-gray-700'
+                                ? `${f.color} text-white`
+                                : 'bg-gray-100 text-gray-700'
                                 }`}
                         >
                             {f.label} ({f.count})
@@ -156,7 +157,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                     ) : error ? (
                         <div className="text-center py-8">
                             <p className="text-red-600 mb-2">{error}</p>
-                            <p className="text-xs text-muted">Configure SUPABASE_SERVICE_ROLE_KEY na Vercel</p>
+                            <p className="text-xs text-muted">Acesso restrito ou configuração incorreta.</p>
                         </div>
                     ) : filteredUsers.length === 0 ? (
                         <div className="text-center py-8">
@@ -182,8 +183,8 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                                             onClick={() => handleActivate(user.id, !user.is_active)}
                                             disabled={activating === user.id}
                                             className={`px-4 py-2 rounded-lg text-sm font-medium flex-shrink-0 ml-2 ${user.is_active
-                                                    ? 'bg-red-100 text-red-600'
-                                                    : 'bg-green-500 text-white'
+                                                ? 'bg-red-100 text-red-600'
+                                                : 'bg-green-500 text-white'
                                                 }`}
                                         >
                                             {activating === user.id ? '...' : user.is_active ? 'Desativar' : 'Ativar'}
