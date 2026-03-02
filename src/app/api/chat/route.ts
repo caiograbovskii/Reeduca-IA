@@ -4,6 +4,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 
@@ -34,11 +35,21 @@ REGRAS:
 
 export async function POST(request: NextRequest) {
     try {
+        // --- PROTEÇÃO DE SESSÃO DA API ---
+        const supabase = await createClient()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+        if (authError || !user) {
+            console.error('Tentativa de acesso não autorizado à API de Chat')
+            return NextResponse.json({ error: 'Acesso negado. Faça login para utilizar o chat.' }, { status: 401 })
+        }
+        // ---------------------------------
+
         const body = await request.json()
         const { message, menuContent } = body
 
         // Log para debug
-        console.log('Recebida requisição:', { message, hasMenu: !!menuContent })
+        console.log('Recebida requisição:', { message, hasMenu: !!menuContent, userId: user.id })
 
         if (!message) {
             return NextResponse.json({ error: 'Mensagem é obrigatória' }, { status: 400 })

@@ -4,12 +4,23 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { extractText } from 'unpdf'
+import { createClient } from '@/lib/supabase/server'
 
 // Configurar como Node.js runtime (não Edge)
 export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
     try {
+        // --- PROTEÇÃO DE SESSÃO DA API ---
+        const supabase = await createClient()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+        if (authError || !user) {
+            console.error('Tentativa de acesso não autorizado à API de Upload')
+            return NextResponse.json({ error: 'Acesso negado. Faça login para fazer upload.' }, { status: 401 })
+        }
+        // ---------------------------------
+
         const formData = await request.formData()
         const file = formData.get('file') as File
 
