@@ -49,7 +49,7 @@ export default function AguardandoPage() {
 
             setDebugInfo(`Perfil: role=${profile?.role}, is_active=${profile?.is_active}`)
 
-            if (profile?.is_active) {
+            if (profile?.is_active || profile?.role === 'admin') {
                 // Todos vão para o dashboard (admin tem botão especial lá)
                 router.push('/dashboard')
             }

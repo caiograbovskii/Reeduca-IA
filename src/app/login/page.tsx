@@ -58,7 +58,7 @@ export default function LoginPage() {
                     return
                 }
 
-                if (profile && !profile.is_active) {
+                if (profile && !profile.is_active && profile.role !== 'admin') {
                     router.push('/aguardando')
                 } else {
                     // Tanto admin quanto paciente vão para o dashboard

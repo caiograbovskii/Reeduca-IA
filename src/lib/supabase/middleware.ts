@@ -80,8 +80,8 @@ export async function updateSession(request: NextRequest) {
                 return response
             }
 
-            // Se o usuário não está ativo e não está na página de aguardando
-            if (!profile.is_active && request.nextUrl.pathname !== '/aguardando') {
+            // Se o usuário não está ativo (exceto admin) e não está na página de aguardando
+            if (!profile.is_active && profile.role !== 'admin' && request.nextUrl.pathname !== '/aguardando') {
                 const url = request.nextUrl.clone()
                 url.pathname = '/aguardando'
                 return NextResponse.redirect(url)
