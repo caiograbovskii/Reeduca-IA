@@ -51,9 +51,21 @@ export async function POST(request: NextRequest) {
         // Log para debug
         console.log('Recebida requisição:', { message, hasMenu: !!menuContent, userId: user.id })
 
-        if (!message) {
+        if (!message || message.trim() === '') {
             return NextResponse.json({ error: 'Mensagem é obrigatória' }, { status: 400 })
         }
+
+        // --- PROTEÇÃO CONTRA ABUSO DE CUSTOS DA API GEMINI ---
+        // Limite máximo de 2.000 caracteres por mensagem
+        const MAX_MESSAGE_LENGTH = 2000;
+        if (message.length > MAX_MESSAGE_LENGTH) {
+            console.warn(`Mensagem muito longa bloqueada: ${message.length} caracteres`);
+            return NextResponse.json(
+                { error: 'Sua mensagem é muito longa. Por favor, resuma em até 2000 caracteres.' },
+                { status: 400 }
+            )
+        }
+        // -----------------------------------------------------
 
         const apiKey = process.env.GEMINI_API_KEY
 

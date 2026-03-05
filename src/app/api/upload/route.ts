@@ -34,6 +34,18 @@ export async function POST(request: NextRequest) {
         const fileName = file.name.toLowerCase()
         let extractedText = ''
 
+        // --- PROTEÇÃO CONTRA ABUSO DE MEMÓRIA (DoS) ---
+        // Limite máximo de 5MB
+        const MAX_FILE_SIZE = 5 * 1024 * 1024;
+        if (file.size > MAX_FILE_SIZE) {
+            console.warn(`Tentativa de upload de arquivo muito grande bloqueada: ${file.size} bytes`);
+            return NextResponse.json(
+                { error: 'O arquivo é muito grande. O tamanho máximo permitido é de 5MB.' },
+                { status: 400 }
+            )
+        }
+        // ----------------------------------------------
+
         // Converter File para Buffer
         const arrayBuffer = await file.arrayBuffer()
         const buffer = Buffer.from(arrayBuffer)
