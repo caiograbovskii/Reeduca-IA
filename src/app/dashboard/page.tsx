@@ -442,10 +442,33 @@ export default function DashboardPage() {
                             <h2 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">
                                 Olá, {profile?.full_name?.split(' ')[0]}! 👋
                             </h2>
-                            <p className="text-muted mb-8 leading-relaxed text-lg">
-                                Sou sua assistente nutricional pessoal.<br />
-                                <span className="text-sm opacity-70">Selecione uma conversa ou inicie uma nova para começarmos.</span>
-                            </p>
+                            {menus.length === 0 ? (
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-left mb-8 w-full">
+                                    <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-4">
+                                        <span className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm">✨</span>
+                                        Siga estes 3 passos:
+                                    </h3>
+                                    <ol className="space-y-3 text-sm text-gray-600">
+                                        <li className="flex gap-3 items-start">
+                                            <span className="font-bold text-primary mt-0.5">1.</span>
+                                            <span>Toque em <b className="text-gray-800">+ Adicionar</b> no menu lateral para enviar o PDF do seu cardápio.</span>
+                                        </li>
+                                        <li className="flex gap-3 items-start">
+                                            <span className="font-bold text-primary mt-0.5">2.</span>
+                                            <span>Inicie uma <b className="text-gray-800">Nova Conversa</b> no botão abaixo.</span>
+                                        </li>
+                                        <li className="flex gap-3 items-start">
+                                            <span className="font-bold text-primary mt-0.5">3.</span>
+                                            <span>Pronto! Pergunte sobre substituições e receitas.</span>
+                                        </li>
+                                    </ol>
+                                </div>
+                            ) : (
+                                <p className="text-muted mb-8 leading-relaxed text-lg">
+                                    Sou sua assistente nutricional pessoal.<br />
+                                    <span className="text-sm opacity-70">Selecione uma conversa ou inicie uma nova para começarmos.</span>
+                                </p>
+                            )}
                             <button
                                 onClick={handleNewChat}
                                 className="group btn-primary py-4 px-8 text-lg shadow-xl shadow-primary/30 hover:shadow-2xl hover:-translate-y-1 transition-all"

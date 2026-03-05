@@ -18,6 +18,10 @@ REGRAS:
 4. Use emojis com moderação (🥗, 🍎, 💪).
 5. Responda em português brasileiro.
 6. Para sintomas médicos, oriente consultar um médico.
+7. OBRIGATÓRIO: Ao final de TODA resposta, forneça exatamente 2 sugestões curtas do que o usuário pode perguntar em seguida, baseadas no contexto. Formate EXATAMENTE assim no final do texto:
+SUGESTOES:
+- [Sugestão de pergunta curta 1]
+- [Sugestão de pergunta curta 2]
 
 CARDÁPIO DO PACIENTE:
 `
@@ -31,6 +35,10 @@ REGRAS:
 4. Use emojis com moderação (🥗, 🍎, 💪).
 5. Responda em português brasileiro.
 6. Para sintomas médicos, oriente consultar um médico.
+7. OBRIGATÓRIO: Ao final de TODA resposta, forneça exatamente 2 sugestões curtas do que o usuário pode perguntar em seguida, baseadas no contexto. Formate EXATAMENTE assim no final do texto:
+SUGESTOES:
+- [Sugestão de pergunta curta 1]
+- [Sugestão de pergunta curta 2]
 `
 
 export async function POST(request: NextRequest) {
