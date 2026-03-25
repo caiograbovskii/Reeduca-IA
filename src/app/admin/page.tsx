@@ -15,6 +15,7 @@ export default function AdminPage() {
     const [loading, setLoading] = useState(true)
     const [users, setUsers] = useState<Profile[]>([])
     const [activating, setActivating] = useState<string | null>(null)
+    const [deleting, setDeleting] = useState<string | null>(null)
     const [filter, setFilter] = useState<'pending' | 'active' | 'all'>('pending')
 
     useEffect(() => {
@@ -51,6 +52,31 @@ export default function AdminPage() {
             )
         }
         setActivating(null)
+    }
+
+    const handleDelete = async (userId: string) => {
+        if (!window.confirm('ATENÇÃO: Você está prestes a excluir este paciente PERMANENTEMENTE do sistema.\n\nE-mail, acessos e perfil serão perdidos!\n\nTem certeza que deseja continuar?')) {
+            return
+        }
+
+        setDeleting(userId)
+        
+        try {
+            const response = await fetch(`/api/admin/users?id=${userId}`, {
+                method: 'DELETE',
+            })
+            
+            if (response.ok) {
+                setUsers(prev => prev.filter(u => u.id !== userId))
+            } else {
+                const data = await response.json()
+                window.alert(`Erro ao excluir: ${data.error || 'Falha no servidor'}`)
+            }
+        } catch (error) {
+            window.alert('Erro de conexão ao tentar excluir.')
+        } finally {
+            setDeleting(null)
+        }
     }
 
     const handleLogout = async () => {
@@ -225,23 +251,32 @@ export default function AdminPage() {
                                                 {new Date(user.created_at).toLocaleDateString('pt-BR')}
                                             </td>
                                             <td className="py-4 px-4 text-right">
-                                                {user.is_active ? (
+                                                <div className="flex justify-end items-center gap-2">
+                                                    {user.is_active ? (
+                                                        <button
+                                                            onClick={() => handleActivate(user.id, false)}
+                                                            disabled={activating === user.id || deleting === user.id}
+                                                            className="px-3 py-1.5 text-sm font-medium text-orange-700 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50"
+                                                        >
+                                                            {activating === user.id ? '...' : 'Desativar'}
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleActivate(user.id, true)}
+                                                            disabled={activating === user.id || deleting === user.id}
+                                                            className="px-3 py-1.5 text-sm font-medium text-white bg-success rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
+                                                        >
+                                                            {activating === user.id ? '...' : 'Ativar'}
+                                                        </button>
+                                                    )}
                                                     <button
-                                                        onClick={() => handleActivate(user.id, false)}
-                                                        disabled={activating === user.id}
+                                                        onClick={() => handleDelete(user.id)}
+                                                        disabled={activating === user.id || deleting === user.id}
                                                         className="px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
                                                     >
-                                                        {activating === user.id ? '...' : 'Desativar'}
+                                                        {deleting === user.id ? '...' : 'Excluir'}
                                                     </button>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => handleActivate(user.id, true)}
-                                                        disabled={activating === user.id}
-                                                        className="px-3 py-1.5 text-sm font-medium text-white bg-success rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50"
-                                                    >
-                                                        {activating === user.id ? '...' : 'Ativar'}
-                                                    </button>
-                                                )}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
