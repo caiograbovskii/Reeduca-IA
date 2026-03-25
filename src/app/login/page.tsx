@@ -62,7 +62,7 @@ export default function LoginPage() {
                     router.push('/aguardando')
                 } else {
                     // Tanto admin quanto paciente vão para o dashboard
-                    router.push('/dashboard')
+                    window.location.href = '/dashboard'
                 }
             }
         } catch (err: unknown) {

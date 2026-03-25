@@ -58,6 +58,29 @@ export default function CadastroPage() {
         setFormData(prev => ({ ...prev, [name]: formattedValue }))
     }
 
+    const isValidCPF = (cpf: string) => {
+        const cleanCPF = cpf.replace(/\D/g, '')
+        if (cleanCPF.length !== 11) return false
+        
+        // Verifica se todos os dígitos são iguais
+        if (/^(\d)\1+$/.test(cleanCPF)) return false
+        
+        let soma = 0
+        let resto
+        for (let i = 1; i <= 9; i++) soma += parseInt(cleanCPF.substring(i - 1, i)) * (11 - i)
+        resto = (soma * 10) % 11
+        if ((resto === 10) || (resto === 11)) resto = 0
+        if (resto !== parseInt(cleanCPF.substring(9, 10))) return false
+        
+        soma = 0
+        for (let i = 1; i <= 10; i++) soma += parseInt(cleanCPF.substring(i - 1, i)) * (12 - i)
+        resto = (soma * 10) % 11
+        if ((resto === 10) || (resto === 11)) resto = 0
+        if (resto !== parseInt(cleanCPF.substring(10, 11))) return false
+        
+        return true
+    }
+
     const validateForm = () => {
         if (formData.password.length < 6) {
             setError('A senha deve ter pelo menos 6 caracteres.')
@@ -67,8 +90,8 @@ export default function CadastroPage() {
             setError('As senhas não coincidem.')
             return false
         }
-        if (formData.cpf.replace(/\D/g, '').length !== 11) {
-            setError('CPF inválido. Digite os 11 dígitos.')
+        if (!isValidCPF(formData.cpf)) {
+            setError('CPF inválido. Verifique o número digitado.')
             return false
         }
         if (formData.phone.replace(/\D/g, '').length < 10) {

@@ -51,7 +51,7 @@ export default function AguardandoPage() {
 
             if (profile?.is_active || profile?.role === 'admin') {
                 // Todos vão para o dashboard (admin tem botão especial lá)
-                router.push('/dashboard')
+                window.location.href = '/dashboard'
             }
         } catch (err) {
             setDebugInfo(`Erro inesperado: ${err}`)
