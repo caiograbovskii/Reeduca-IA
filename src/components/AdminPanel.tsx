@@ -17,6 +17,7 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
     const [loading, setLoading] = useState(true)
     const [users, setUsers] = useState<Profile[]>([])
     const [activating, setActivating] = useState<string | null>(null)
+    const [deleting, setDeleting] = useState<string | null>(null)
     const [filter, setFilter] = useState<'pending' | 'active' | 'all'>('pending')
     const [error, setError] = useState<string | null>(null)
 
@@ -78,6 +79,31 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
             console.error('Erro ao atualizar:', err)
         } finally {
             setActivating(null)
+        }
+    }
+
+    const handleDelete = async (userId: string) => {
+        if (!window.confirm('ATENÇÃO: Você está prestes a excluir este paciente PERMANENTEMENTE do sistema.\n\nE-mail, acessos e perfil serão perdidos!\n\nTem certeza que deseja continuar?')) {
+            return
+        }
+
+        setDeleting(userId)
+        
+        try {
+            const response = await fetch(`/api/admin/users?id=${userId}`, {
+                method: 'DELETE',
+            })
+            
+            if (response.ok) {
+                setUsers(prev => prev.filter(u => u.id !== userId))
+            } else {
+                const data = await response.json()
+                window.alert(`Erro ao excluir: ${data.error || 'Falha no servidor'}`)
+            }
+        } catch (err) {
+            window.alert('Erro de conexão ao tentar excluir.')
+        } finally {
+            setDeleting(null)
         }
     }
 
@@ -179,16 +205,25 @@ export default function AdminPanel({ onClose }: AdminPanelProps) {
                                                 <p className="text-xs text-muted truncate">{user.phone}</p>
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={() => handleActivate(user.id, !user.is_active)}
-                                            disabled={activating === user.id}
-                                            className={`px-4 py-2 rounded-lg text-sm font-medium flex-shrink-0 ml-2 ${user.is_active
-                                                ? 'bg-red-100 text-red-600'
-                                                : 'bg-green-500 text-white'
-                                                }`}
-                                        >
-                                            {activating === user.id ? '...' : user.is_active ? 'Desativar' : 'Ativar'}
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => handleActivate(user.id, !user.is_active)}
+                                                disabled={activating === user.id || deleting === user.id}
+                                                className={`px-3 py-1.5 rounded-md text-sm font-medium flex-shrink-0 transition-colors disabled:opacity-50 ${user.is_active
+                                                    ? 'bg-orange-50 text-orange-700 hover:bg-orange-100'
+                                                    : 'bg-green-500 text-white hover:bg-green-600'
+                                                    }`}
+                                            >
+                                                {activating === user.id ? '...' : user.is_active ? 'Desativar' : 'Ativar'}
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(user.id)}
+                                                disabled={activating === user.id || deleting === user.id}
+                                                className="px-3 py-1.5 rounded-md text-sm font-medium flex-shrink-0 transition-colors disabled:opacity-50 bg-red-50 text-red-600 hover:bg-red-100"
+                                            >
+                                                {deleting === user.id ? '...' : 'Excluir'}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
