@@ -14,7 +14,16 @@ export async function GET(request: NextRequest) {
 
     if (code) {
         const supabase = await createClient()
-        await supabase.auth.exchangeCodeForSession(code)
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        
+        if (error) {
+            console.error('Erro ao confirmar email no callback:', error.message)
+            return NextResponse.redirect(`${origin}/login?error=O+link+de+confirmação+de+e-mail+falhou,+é+inválido+ou+expirou.+Tente+fazer+o+login+novamente+para+enviarmos+outro.`)
+        }
+    } else if (requestUrl.searchParams.get('error')) {
+        // Trata erros que já vêm direto da URL do Supabase
+        const errorDesc = requestUrl.searchParams.get('error_description') || 'Erro de autenticação desconhecido.'
+        return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(errorDesc)}`)
     }
 
     // Se for confirmação de email, redireciona para página de sucesso
